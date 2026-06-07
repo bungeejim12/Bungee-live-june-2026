@@ -16,7 +16,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Bungee — Activate Your Network',
   description: 'Bungee is a peer-to-peer referral marketplace that pays real cash for trusted introductions to talent, services, and customers.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
