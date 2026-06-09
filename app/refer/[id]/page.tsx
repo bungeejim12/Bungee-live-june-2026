@@ -115,6 +115,31 @@ export default function ReferralLandingPage() {
     phone: ''
   })
 
+  const trackReferralVisit = async (
+    campaignId: string,
+    visitorId: string,
+    originator: string | null,
+    referrer: string | null
+  ) => {
+    try {
+      const supabase = createClient()
+      
+      // Insert referral chain visit record
+      await supabase.from('referral_visits').insert({
+        campaign_id: campaignId,
+        visitor_id: visitorId,
+        originator_id: originator,
+        referrer_id: referrer,
+        visited_at: new Date().toISOString(),
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        chain_depth: originator ? (referrer && referrer !== originator ? 2 : 1) : 0
+      }).select().maybeSingle()
+    } catch (error) {
+      // Silently fail - don't block the user experience
+      console.log('[v0] Referral tracking (non-critical):', error)
+    }
+  }
+
   useEffect(() => {
     // Generate or retrieve visitor ID
     const vId = generateVisitorId()
@@ -139,32 +164,6 @@ export default function ReferralLandingPage() {
     const timer = setTimeout(() => setIsLoading(false), 600)
     return () => clearTimeout(timer)
   }, [campaignId, originatorId, referrerId])
-
-  // Track referral visit in Supabase for viral growth tree
-  const trackReferralVisit = async (
-    campaignId: string, 
-    visitorId: string, 
-    originator: string | null, 
-    referrer: string | null
-  ) => {
-    try {
-      const supabase = createClient()
-      
-      // Insert referral chain visit record
-      await supabase.from('referral_visits').insert({
-        campaign_id: campaignId,
-        visitor_id: visitorId,
-        originator_id: originator,
-        referrer_id: referrer,
-        visited_at: new Date().toISOString(),
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        chain_depth: originator ? (referrer && referrer !== originator ? 2 : 1) : 0
-      }).select().maybeSingle()
-    } catch (error) {
-      // Silently fail - don't block the user experience
-      console.log('[v0] Referral tracking (non-critical):', error)
-    }
-  }
 
   // Handle "Refer & Earn" with Web Share API and chain tracking
   const handleShare = async () => {

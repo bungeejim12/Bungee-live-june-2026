@@ -48,6 +48,23 @@ export function AskBungeeChat({ onNavigate, onOpenModal, isOpen: controlledIsOpe
 
   const [inputValue, setInputValue] = useState('')
 
+  const loadKnowledgeFiles = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('bungee_knowledge')
+        .select('id, name, content')
+        .order('created_at', { ascending: false })
+      
+      if (data) {
+        setKnowledgeFiles(data)
+      }
+    } catch {
+      // Supabase not configured, skip loading knowledge files
+      console.log('[v0] Supabase not configured, skipping knowledge files')
+    }
+  }, [])
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -56,7 +73,7 @@ export function AskBungeeChat({ onNavigate, onOpenModal, isOpen: controlledIsOpe
   // Load knowledge files on mount
   useEffect(() => {
     loadKnowledgeFiles()
-  }, [])
+  }, [loadKnowledgeFiles])
 
   // Check for speech recognition support
   useEffect(() => {
@@ -185,23 +202,6 @@ export function AskBungeeChat({ onNavigate, onOpenModal, isOpen: controlledIsOpe
       } catch (err) {
         console.log('[v0] Start error:', err)
       }
-    }
-  }
-
-  const loadKnowledgeFiles = async () => {
-    try {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('bungee_knowledge')
-        .select('id, name, content')
-        .order('created_at', { ascending: false })
-      
-      if (data) {
-        setKnowledgeFiles(data)
-      }
-    } catch {
-      // Supabase not configured, skip loading knowledge files
-      console.log('[v0] Supabase not configured, skipping knowledge files')
     }
   }
 

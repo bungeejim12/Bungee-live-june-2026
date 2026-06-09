@@ -113,6 +113,28 @@ export default function OfferLandingPage() {
     phone: ''
   })
 
+  const trackReferralVisit = async (
+    campaignId: string,
+    visitorId: string,
+    originator: string | null,
+    referrer: string | null
+  ) => {
+    try {
+      const supabase = createClient()
+      await supabase.from('referral_visits').insert({
+        campaign_id: campaignId,
+        visitor_id: visitorId,
+        originator_id: originator,
+        referrer_id: referrer,
+        visited_at: new Date().toISOString(),
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        chain_depth: originator ? (referrer && referrer !== originator ? 2 : 1) : 0
+      }).select().maybeSingle()
+    } catch (error) {
+      console.log('[v0] Referral tracking (non-critical):', error)
+    }
+  }
+
   useEffect(() => {
     const vId = generateVisitorId()
     setVisitorId(vId)
@@ -131,28 +153,6 @@ export default function OfferLandingPage() {
     const timer = setTimeout(() => setIsLoading(false), 600)
     return () => clearTimeout(timer)
   }, [campaignId, originatorId, referrerId])
-
-  const trackReferralVisit = async (
-    campaignId: string, 
-    visitorId: string, 
-    originator: string | null, 
-    referrer: string | null
-  ) => {
-    try {
-      const supabase = createClient()
-      await supabase.from('referral_visits').insert({
-        campaign_id: campaignId,
-        visitor_id: visitorId,
-        originator_id: originator,
-        referrer_id: referrer,
-        visited_at: new Date().toISOString(),
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        chain_depth: originator ? (referrer && referrer !== originator ? 2 : 1) : 0
-      }).select().maybeSingle()
-    } catch (error) {
-      console.log('[v0] Referral tracking (non-critical):', error)
-    }
-  }
 
   const handleShare = async () => {
     // Build the daisy chain payload for all campaign types

@@ -98,6 +98,7 @@ import {
   ArrowUpRight,
   LayoutGrid,
   Wallet,
+  Truck,
 } from "lucide-react"
 
 interface UserProfile {

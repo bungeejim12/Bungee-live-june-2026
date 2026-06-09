@@ -3,7 +3,27 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getDirectDb } from "@/lib/supabase/db"
 import { createClient } from "@/lib/supabase/server"
-import type { ReferrerInfo, UserReferral } from "@/lib/referrals"
+import type { ReferrerInfo, ReferredUserProfile, UserReferral } from "@/lib/referrals"
+
+type ReferralRow = {
+  id: string
+  referral_code: string
+  channel: string
+  created_at: string
+  referred_user: ReferredUserProfile | ReferredUserProfile[] | null
+}
+
+function normalizeReferrals(rows: ReferralRow[]): UserReferral[] {
+  return rows.map((row) => ({
+    id: row.id,
+    referral_code: row.referral_code,
+    channel: row.channel,
+    created_at: row.created_at,
+    referred_user: Array.isArray(row.referred_user)
+      ? row.referred_user[0] ?? null
+      : row.referred_user,
+  }))
+}
 
 async function lookupReferrerByCode(code: string): Promise<ReferrerInfo | null> {
   const normalized = code.trim().toUpperCase()
@@ -89,7 +109,7 @@ export async function getMyReferrals(): Promise<UserReferral[]> {
       return fetchReferralsAsAdmin(user.id)
     }
 
-    return (data ?? []) as UserReferral[]
+    return normalizeReferrals((data ?? []) as ReferralRow[])
   } catch {
     return []
   }
@@ -125,7 +145,7 @@ async function fetchReferralsAsAdmin(userId: string): Promise<UserReferral[]> {
     return []
   }
 
-  return (data ?? []) as UserReferral[]
+  return normalizeReferrals((data ?? []) as ReferralRow[])
 }
 
 function generateReferralCode() {

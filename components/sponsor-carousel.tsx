@@ -465,6 +465,7 @@ export function SponsorCarousel({ variant = "referral", isDarkMode = false }: Sp
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showDetail, setShowDetail] = useState(false)
   const [selectedSponsor, setSelectedSponsor] = useState<Sponsor | null>(null)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   useEffect(() => {
     if (showDetail) return // Pause rotation when detail view is open
@@ -501,8 +502,6 @@ export function SponsorCarousel({ variant = "referral", isDarkMode = false }: Sp
   const handleVisitWebsite = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
-
-  const [copiedLink, setCopiedLink] = useState(false)
 
   const getShareText = (sponsor: Sponsor) => {
     return `Check out this exclusive offer from ${sponsor.name}!\n\n${sponsor.offer}\n\n${sponsor.description}\n\nVisit: ${sponsor.website}`

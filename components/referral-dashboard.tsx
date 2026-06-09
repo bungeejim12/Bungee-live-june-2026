@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, startTransition } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -41,7 +42,7 @@ import {
   ArrowUpRight,
   Circle,
   X,
-  Link,
+  Link as LinkIcon,
   Lock,
   Shield,
   Flame,
@@ -123,6 +124,7 @@ interface ReferralDashboardProps {
 export default function ReferralDashboard({ onViewChange, currentView = "referral", user, isDemo = true, userProfile = null }: ReferralDashboardProps = {}) {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [activeCategory, setActiveCategoryRaw] = useState<"jobs" | "services" | "igotguy" | null>(null)
+  const [mainView, setMainViewRaw] = useState<"ops" | "referrals" | "earn" | "rewards" | "rank" | null>(null)
 
   // Wrap heavy view-switch updates in startTransition so the browser can paint
   // tap/click feedback immediately instead of blocking on a large re-render (fixes INP).
@@ -150,7 +152,6 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const [showAllRankings, setShowAllRankings] = useState(false)
   const [activeTab, setActiveTab] = useState("opportunities")
   const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [mainView, setMainViewRaw] = useState<"ops" | "referrals" | "earn" | "rewards" | "rank" | null>(null)
   const [commandCenterOpen, setCommandCenterOpen] = useState(false)
   const [commandCenterTab, setCommandCenterTab] = useState<"referrals" | "hiring" | "products" | "services">("referrals")
   const [shareModalItem, setShareModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
@@ -176,10 +177,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   }
 
   useEffect(() => {
-    if (isDemo || !userProfile?.id) {
-      setReferralList([])
-      return
-    }
+    if (isDemo || !userProfile?.id) return
 
     let cancelled = false
 
@@ -306,13 +304,13 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               <Users className="size-5" />
               My Referrals
             </button>
-            <a
+            <Link
               href="/"
               className={`flex items-center gap-3 text-sm font-semibold text-left px-4 py-3 rounded-xl transition-all ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               <Home className="size-5" />
               Back to Home
-            </a>
+            </Link>
           </div>
 
         {/* Avatar Section */}
@@ -2532,7 +2530,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     variant="outline"
                     className="h-10 px-3 border-gray-700 bg-gray-700 hover:bg-gray-600 text-white"
                   >
-                    {copiedLink ? <Check className="size-4 text-emerald-400" /> : <Link className="size-4" />}
+                    {copiedLink ? <Check className="size-4 text-emerald-400" /> : <LinkIcon className="size-4" />}
                   </Button>
                 </div>
               </div>

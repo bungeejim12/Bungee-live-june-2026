@@ -35,9 +35,10 @@ export default function ProductBountyWizard({ onClose }: ProductBountyWizardProp
   // AI One-Pager Generation State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [aiGeneratedOnePager, setAiGeneratedOnePager] = useState('');
+  const [referralSuffix] = useState(() => Date.now().toString(36));
 
   // Generate referral link for sharing
-  const referralLink = `https://justbungee.com/refer/${productName?.toLowerCase().replace(/\s+/g, '-') || 'product'}-${Date.now().toString(36)}`;
+  const referralLink = `https://justbungee.com/refer/${productName?.toLowerCase().replace(/\s+/g, '-') || 'product'}-${referralSuffix}`;
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 5));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
