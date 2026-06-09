@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase/env'
 
 // Public routes that should bypass all auth/middleware checks
 const PUBLIC_ROUTES = [
@@ -12,6 +13,8 @@ const PUBLIC_ROUTES = [
   '/campaign',
   '/api/scrape-company',
   '/auth',
+  '/join',
+  '/invite',
 ]
 
 export async function updateSession(request: NextRequest) {
@@ -31,8 +34,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // EARLY EXIT: If Supabase env vars are not configured, skip auth checks
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = getSupabaseUrl()
+  const supabaseKey = getSupabasePublishableKey()
   if (!supabaseUrl || !supabaseKey) {
     return response
   }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, isSupabaseClientConfigured } from "@/lib/supabase/client"
+import { SupabaseConfigBanner } from "@/components/supabase-config-banner"
 import Link from "next/link"
 import Image from "next/image"
 import { Building2, Users, Loader2, Phone, Eye, EyeOff, ArrowRight, ArrowLeft, Check, Shield } from "lucide-react"
@@ -57,12 +58,13 @@ function LoginContent() {
         sessionStorage.clear()
       }
       
-      // Sign out from Supabase to clear any stale server-side session
-      try {
-        const supabase = createClient()
-        await supabase.auth.signOut({ scope: 'local' })
-      } catch {
-        // Ignore errors during cleanup
+      if (isSupabaseClientConfigured()) {
+        try {
+          const supabase = createClient()
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch {
+          // Ignore errors during cleanup
+        }
       }
     }
     
@@ -198,6 +200,12 @@ function LoginContent() {
       }
 
       if (data?.user) {
+        localStorage.removeItem('bungee_demo_mode')
+        localStorage.removeItem('bungee_demo_active')
+        localStorage.removeItem('bungee_demo_type')
+        localStorage.removeItem('bungee_demo_user')
+        localStorage.removeItem('bungee_sandbox_session')
+
         // Get user profile to determine redirect
         const { data: profile } = await supabase
           .from('profiles')
@@ -300,6 +308,12 @@ function LoginContent() {
         const { data: sessionData } = await supabase.auth.getSession()
         
         if (sessionData?.session) {
+          localStorage.removeItem('bungee_demo_mode')
+          localStorage.removeItem('bungee_demo_active')
+          localStorage.removeItem('bungee_demo_type')
+          localStorage.removeItem('bungee_demo_user')
+          localStorage.removeItem('bungee_sandbox_session')
+
           // Get user profile to determine redirect
           const { data: profile } = await supabase
             .from('profiles')
@@ -596,6 +610,8 @@ function LoginContent() {
           </Button>
         </Link>
       </header>
+
+      <SupabaseConfigBanner />
 
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
         <div className="w-full max-w-md">

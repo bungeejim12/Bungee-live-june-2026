@@ -1,21 +1,27 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Building2, ArrowLeft, ArrowRight, Check, Loader2, Phone, Eye, EyeOff, Shield } from "lucide-react"
+import { Users, Building2, ArrowLeft, ArrowRight, Check, Loader2, Phone, Eye, EyeOff, Shield, UserPlus } from "lucide-react"
+import { completeSignupProfile, getReferrerByCode } from "@/app/actions/referrals"
+import { getReferrerDisplayName, type ReferrerInfo } from "@/lib/referrals"
+import { SupabaseConfigBanner } from "@/components/supabase-config-banner"
+import { isSupabaseClientConfigured } from "@/lib/supabase/client"
 
 type UserType = "bungee" | "business"
 type Step = "type" | "details" | "verify-sms"
 
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const referralCodeParam = searchParams.get("ref")
   const [step, setStep] = useState<Step>("type")
   const [userType, setUserType] = useState<UserType | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -45,14 +51,31 @@ export default function SignUpPage() {
   // Development/configuration notice state
   const [showConfigNotice, setShowConfigNotice] = useState(false)
 
+  // Referral invite state
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [referrer, setReferrer] = useState<ReferrerInfo | null>(null)
+  const [isLoadingReferrer, setIsLoadingReferrer] = useState(false)
+
   // PRODUCTION CLEANUP: Clear all stale auth tokens and sandbox data on page load
   useEffect(() => {
     const clearStaleAuthState = async () => {
+      const storedRef =
+        referralCodeParam ||
+        (typeof window !== "undefined" ? sessionStorage.getItem("bungee_referral_code") : null)
+
+      if (storedRef) {
+        setReferralCode(storedRef)
+      }
+
       // Clear any lingering sandbox/staging session data
       if (typeof window !== 'undefined') {
         localStorage.removeItem('bungee_sandbox_session')
         localStorage.removeItem('bungee_staging_user')
         localStorage.removeItem('bungee_mock_session')
+        localStorage.removeItem('bungee_demo_mode')
+        localStorage.removeItem('bungee_demo_active')
+        localStorage.removeItem('bungee_demo_type')
+        localStorage.removeItem('bungee_demo_user')
         
         // Clear any sb-* items from localStorage (Supabase tokens)
         const keysToRemove: string[] = []
@@ -63,22 +86,38 @@ export default function SignUpPage() {
           }
         }
         keysToRemove.forEach(key => localStorage.removeItem(key))
-        
-        // Clear sessionStorage as well
-        sessionStorage.clear()
       }
       
-      // Sign out from Supabase to clear any stale server-side session
-      try {
-        const supabase = createClient()
-        await supabase.auth.signOut({ scope: 'local' })
-      } catch {
-        // Ignore errors during cleanup
+      if (isSupabaseClientConfigured()) {
+        try {
+          const supabase = createClient()
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch {
+          // Ignore errors during cleanup
+        }
       }
     }
     
     clearStaleAuthState()
-  }, [])
+  }, [referralCodeParam])
+
+  useEffect(() => {
+    if (!referralCode) return
+
+    const loadReferrer = async () => {
+      setIsLoadingReferrer(true)
+      const referrerData = await getReferrerByCode(referralCode)
+      if (referrerData) {
+        setReferrer(referrerData)
+        if (referrerData.user_type === "business") {
+          setUserType("business")
+        }
+      }
+      setIsLoadingReferrer(false)
+    }
+
+    loadReferrer()
+  }, [referralCode])
 
   // Format phone number for display
   const formatPhoneDisplay = (value: string) => {
@@ -290,28 +329,21 @@ export default function SignUpPage() {
       }
 
       if (data.user) {
-        // Create profile in database
-        try {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              phone: formatPhoneE164(phoneNumber),
-              first_name: firstName,
-              last_name: lastName,
-              business_name: userType === 'business' ? businessName : null,
-              user_type: userType,
-              phone_verified: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-          
-          if (profileError) {
-            console.log('[v0] Profile creation error:', profileError.message)
-          }
-        } catch (profileErr) {
-          console.log('[v0] Profile creation failed:', profileErr)
-        }
+        await completeSignupProfile({
+          userId: data.user.id,
+          phone: formatPhoneE164(phoneNumber),
+          firstName,
+          lastName,
+          businessName: userType === 'business' ? businessName : null,
+          userType: userType!,
+          referralCode,
+        })
+
+        localStorage.removeItem('bungee_demo_mode')
+        localStorage.removeItem('bungee_demo_active')
+        localStorage.removeItem('bungee_demo_type')
+        localStorage.removeItem('bungee_demo_user')
+        sessionStorage.removeItem('bungee_referral_code')
 
         // Show session sync interstitial
         const targetPath = userType === 'business' 
@@ -386,7 +418,7 @@ export default function SignUpPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/bungee-logo.png" alt="Bungee" width={32} height={32} className="rounded-lg" />
+            <Image src="/images/bungee-logo.png" alt="Bungee" width={32} height={32} className="rounded-lg" />
             <span className="font-bold text-xl text-slate-900">BUNGEE</span>
           </Link>
         </div>
@@ -397,9 +429,26 @@ export default function SignUpPage() {
         </Link>
       </header>
 
+      <SupabaseConfigBanner />
+
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
         <Card className="w-full max-w-md shadow-md border-0 bg-white rounded-lg">
+
+          {referrer && (
+            <div className="mx-6 mt-6 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
+              <UserPlus className="h-5 w-5 text-[#FF8C00] flex-shrink-0" />
+              <p className="text-sm text-orange-900">
+                Invited by <span className="font-semibold">{getReferrerDisplayName(referrer)}</span>
+              </p>
+            </div>
+          )}
+
+          {isLoadingReferrer && referralCode && !referrer && (
+            <div className="mx-6 mt-6 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 text-center">
+              Verifying invite...
+            </div>
+          )}
           
           {/* Progress indicator */}
           <div className="flex items-center justify-center gap-2 pt-6 pb-2">
@@ -802,5 +851,19 @@ export default function SignUpPage() {
         </Link>
       </footer>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#FF8C00]" />
+        </div>
+      }
+    >
+      <SignUpContent />
+    </Suspense>
   )
 }

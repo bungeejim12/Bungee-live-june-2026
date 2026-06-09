@@ -13,7 +13,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/job') ||
     pathname.startsWith('/bounty') ||
     pathname.startsWith('/campaign') ||
-    pathname.startsWith('/auth')
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/invite')
   ) {
     return NextResponse.next()
   }

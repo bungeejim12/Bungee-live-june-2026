@@ -83,6 +83,7 @@ import {
 import { SponsorCarousel } from "@/components/sponsor-carousel"
 import BungeeTaxVerificationModal from "@/components/bungee-tax-verification-modal"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
+import { buildInviteLink } from "@/lib/referrals"
 
 interface UserProfile {
   id: string
@@ -94,6 +95,7 @@ interface UserProfile {
   user_type: string | null
   is_demo: boolean
   tax_verified?: boolean
+  referral_code?: string | null
 }
 
 interface ReferralDashboardProps {
@@ -160,16 +162,24 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
     xpToNext: 500
   }
 
-  // User's unique referral codes based on their ID
-  const userCode = user?.id ? user.id.slice(0, 8).toUpperCase() : "XXXXXXXX"
-  const userName = user?.firstName || "New User"
+  const userName =
+    user?.firstName ||
+    userProfile?.first_name ||
+    (isDemo ? "Demo User" : "New User")
+
+  const referralCode =
+    userProfile?.referral_code ||
+    (user?.id && !isDemo ? user.id.slice(0, 8).toUpperCase() : null)
+
   const referralCodes = {
-    business: `${userCode}-BIZ`,
-    bungee: `${userCode}-REF`
+    business: referralCode || "XXXXXXXX",
+    bungee: referralCode || "XXXXXXXX",
   }
+
+  const inviteLink = referralCode ? buildInviteLink(referralCode) : ""
   const referralLinks = {
-    business: `https://justbungee.com/refer/business/${referralCodes.business}`,
-    bungee: `https://justbungee.com/refer/bungee/${referralCodes.bungee}`
+    business: inviteLink || "https://justbungee.com/auth/sign-up",
+    bungee: inviteLink || "https://justbungee.com/auth/sign-up",
   }
 
   // Dark mode toggle effect

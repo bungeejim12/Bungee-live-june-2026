@@ -18,6 +18,7 @@ interface UserProfile {
   user_type: string | null
   is_demo: boolean
   business_verified?: boolean
+  referral_code?: string | null
 }
 
 export default function BusinessDashboardPage() {
@@ -55,18 +56,6 @@ export default function BusinessDashboardPage() {
         return
       }
       
-      // Check localStorage for demo tokens
-      const demoActive = localStorage.getItem('bungee_demo_active')
-      const demoMode = localStorage.getItem('bungee_demo_mode')
-      const sandboxSession = localStorage.getItem('bungee_sandbox_session')
-      
-      if (demoActive === 'true' || demoMode === 'true' || sandboxSession) {
-        // Demo/staging user - render immediately without Supabase checks
-        setIsDemo(true)
-        setIsLoading(false)
-        return
-      }
-      
       // If real authenticated param, clear demo flags
       if (isAuthenticated) {
         localStorage.removeItem('bungee_demo_mode')
@@ -76,7 +65,7 @@ export default function BusinessDashboardPage() {
         window.history.replaceState({}, '', window.location.pathname)
       }
 
-      // Check for real authenticated user
+      // Prefer real Supabase session over stale demo localStorage
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -85,7 +74,7 @@ export default function BusinessDashboardPage() {
           // Fetch user profile - explicitly select only columns that exist
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('id, email, phone, first_name, last_name, business_name, user_type, business_verified')
+            .select('id, email, phone, first_name, last_name, business_name, user_type, business_verified, referral_code')
             .eq('id', user.id)
             .single()
 
@@ -115,11 +104,12 @@ export default function BusinessDashboardPage() {
             setIsDemo(false)
           }
         } else {
-          // No authenticated user - treat as demo
-          setIsDemo(true)
+          const demoActive = localStorage.getItem('bungee_demo_active')
+          const demoMode = localStorage.getItem('bungee_demo_mode')
+          const sandboxSession = localStorage.getItem('bungee_sandbox_session')
+          setIsDemo(demoActive === 'true' || demoMode === 'true' || !!sandboxSession)
         }
       } catch {
-        // Error checking auth - default to demo
         setIsDemo(true)
       }
 

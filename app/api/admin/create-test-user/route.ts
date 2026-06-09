@@ -1,11 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { assertSupabaseServerEnv } from '@/lib/supabase/env'
 
 export async function POST() {
-  // Use the service role key to bypass RLS and create users
+  const env = assertSupabaseServerEnv()
+  if (!env) {
+    return NextResponse.json({ error: 'Supabase server key not configured' }, { status: 500 })
+  }
+
   const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    env.url,
+    env.key,
     {
       auth: {
         autoRefreshToken: false,
