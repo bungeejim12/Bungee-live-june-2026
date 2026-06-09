@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getDirectDb } from "@/lib/supabase/db"
 import { createClient } from "@/lib/supabase/server"
-import type { ReferrerInfo } from "@/lib/referrals"
+import type { ReferrerInfo, UserReferral } from "@/lib/referrals"
 
 async function lookupReferrerByCode(code: string): Promise<ReferrerInfo | null> {
   const normalized = code.trim().toUpperCase()
@@ -52,6 +52,80 @@ async function lookupReferrerByCode(code: string): Promise<ReferrerInfo | null> 
 export async function getReferrerByCode(code: string): Promise<ReferrerInfo | null> {
   if (!code?.trim()) return null
   return lookupReferrerByCode(code)
+}
+
+export async function getMyReferrals(): Promise<UserReferral[]> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return []
+
+    const { data, error } = await supabase
+      .from('referrals')
+      .select(
+        `
+        id,
+        referral_code,
+        channel,
+        created_at,
+        referred_user:referred_user_id (
+          id,
+          first_name,
+          last_name,
+          user_type,
+          business_name,
+          phone_verified
+        )
+      `,
+      )
+      .eq('referrer_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[v0] getMyReferrals:', error.message)
+      return fetchReferralsAsAdmin(user.id)
+    }
+
+    return (data ?? []) as UserReferral[]
+  } catch {
+    return []
+  }
+}
+
+async function fetchReferralsAsAdmin(userId: string): Promise<UserReferral[]> {
+  const admin = createAdminClient()
+  if (!admin) return []
+
+  const { data, error } = await admin
+    .from('referrals')
+    .select(
+      `
+      id,
+      referral_code,
+      channel,
+      created_at,
+      referred_user:referred_user_id (
+        id,
+        first_name,
+        last_name,
+        user_type,
+        business_name,
+        phone_verified
+      )
+    `,
+    )
+    .eq('referrer_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[v0] fetchReferralsAsAdmin:', error.message)
+    return []
+  }
+
+  return (data ?? []) as UserReferral[]
 }
 
 function generateReferralCode() {

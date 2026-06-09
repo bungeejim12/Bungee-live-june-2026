@@ -68,6 +68,7 @@ import {
   Camera,
   ImageIcon,
   CheckCircle2,
+  Clock,
 } from "lucide-react"
 import { BungeeRankSystem, RankBadge, BUNGEE_RANKS } from "@/components/bungee-rank-system"
 import { BusinessLocatorMap } from "@/components/business-locator-map"
@@ -83,7 +84,15 @@ import {
 import { SponsorCarousel } from "@/components/sponsor-carousel"
 import BungeeTaxVerificationModal from "@/components/bungee-tax-verification-modal"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
-import { buildInviteLink } from "@/lib/referrals"
+import { getMyReferrals } from "@/app/actions/referrals"
+import {
+  buildInviteLink,
+  computeReferralStats,
+  formatReferralDate,
+  getProfileDisplayName,
+  type ReferralStats,
+  type UserReferral,
+} from "@/lib/referrals"
 
 interface UserProfile {
   id: string
@@ -150,17 +159,47 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const [walletOpen, setWalletOpen] = useState(false)
   const [showTaxVerification, setShowTaxVerification] = useState(false)
   const [isTaxVerified, setIsTaxVerified] = useState(isDemo ? true : (userProfile?.tax_verified ?? false))
+  const [referralList, setReferralList] = useState<UserReferral[]>([])
+  const [isLoadingReferrals, setIsLoadingReferrals] = useState(false)
 
-  // User stats - start at 0 for new users
-  const userStats = {
-    totalReferrals: 0,
-    successRate: 0,
-    bungeeScore: 0,
-    totalEarned: 0,
-    level: 1,
+  const demoStats: ReferralStats = {
+    totalReferrals: 5,
+    businessReferrals: 2,
+    bungeeReferrals: 3,
+    verifiedReferrals: 4,
+    successRate: 80,
+    bungeeScore: 500,
+    level: 2,
     xp: 0,
-    xpToNext: 500
+    xpToNext: 500,
+    totalEarned: 0,
   }
+
+  useEffect(() => {
+    if (isDemo || !userProfile?.id) {
+      setReferralList([])
+      return
+    }
+
+    let cancelled = false
+
+    const loadReferrals = async () => {
+      setIsLoadingReferrals(true)
+      const referrals = await getMyReferrals()
+      if (!cancelled) {
+        setReferralList(referrals)
+        setIsLoadingReferrals(false)
+      }
+    }
+
+    loadReferrals()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isDemo, userProfile?.id])
+
+  const userStats = isDemo ? demoStats : computeReferralStats(referralList)
 
   const userName =
     user?.firstName ||
@@ -181,6 +220,15 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
     business: inviteLink || "https://justbungee.com/auth/sign-up",
     bungee: inviteLink || "https://justbungee.com/auth/sign-up",
   }
+  const userCode = referralCode || "XXXXXXXX"
+  const commandCenterTabs = [
+    { id: "referrals" as const, label: "Referrals", icon: Users, color: "text-[#FF8C00]", bgColor: "bg-[#FF8C00]", count: isDemo ? 5 : userStats.totalReferrals },
+    { id: "hiring" as const, label: "Hiring", icon: Briefcase, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500", count: isDemo ? 3 : 0 },
+    { id: "products" as const, label: "Products", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: isDemo ? 2 : 0 },
+    { id: "services" as const, label: "Services", icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500", count: isDemo ? 4 : 0 },
+  ]
+  const modalReferralCount =
+    showReferModal === "business" ? userStats.businessReferrals : userStats.bungeeReferrals
 
   // Dark mode toggle effect
   useEffect(() => {
@@ -543,12 +591,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               {/* Tab Navigation */}
               <div className={`sticky top-[106px] z-10 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex">
-                  {[
-                    { id: "referrals" as const, label: "Referrals", icon: Users, color: "text-[#FF8C00]", bgColor: "bg-[#FF8C00]", count: 5 },
-                    { id: "hiring" as const, label: "Hiring", icon: Briefcase, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500", count: 3 },
-                    { id: "products" as const, label: "Products", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: 2 },
-                    { id: "services" as const, label: "Services", icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500", count: 4 },
-                  ].map((tab) => (
+                  {commandCenterTabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setCommandCenterTab(tab.id)}
@@ -569,32 +612,67 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               {/* Activity Feed - Full Height Scrollable */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {commandCenterTab === "referrals" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="size-16 rounded-full bg-[#FF8C00]/10 dark:bg-[#FF8C00]/20 flex items-center justify-center mb-4">
-                      <Users className="size-8 text-[#FF8C00]" />
+                  isLoadingReferrals ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading referrals...</p>
                     </div>
-                    <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Referral Activity Yet</h3>
-                    <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Your referral activity will appear here. Start by recruiting businesses to Bungee or referring people to opportunities!
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button 
-                        onClick={() => setShowBusinessLocator(true)}
-                        className="bg-gradient-to-r from-[#FF8C00] to-orange-500 hover:opacity-90 text-white"
-                      >
-                        <Building2 className="size-4 mr-2" />
-                        Find Businesses
-                      </Button>
-                      <Button 
-                        onClick={() => setShowReferModal("bungee")}
-                        variant="outline"
-                        className={`${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                      >
-                        <UserPlus className="size-4 mr-2" />
-                        Refer a Bungee
-                      </Button>
+                  ) : referralList.length > 0 || isDemo ? (
+                    <div className="space-y-3">
+                      {(isDemo
+                        ? [
+                            { id: 'demo-1', name: 'Sarah Chen', type: 'bungee' as const, channel: 'link', when: '2h ago' },
+                            { id: 'demo-2', name: 'Metro Plumbing Co.', type: 'business' as const, channel: 'sms', when: '1d ago' },
+                          ]
+                        : referralList.map((referral) => ({
+                            id: referral.id,
+                            name: getProfileDisplayName(referral.referred_user || {}),
+                            type: (referral.referred_user?.user_type === 'business' ? 'business' : 'bungee') as 'business' | 'bungee',
+                            channel: referral.channel,
+                            when: formatReferralDate(referral.created_at),
+                          }))
+                      ).map((item) => (
+                        <div
+                          key={item.id}
+                          className={`flex items-start gap-3 p-3 rounded-xl border ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'}`}
+                        >
+                          <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${item.type === 'business' ? 'bg-[#FF8C00]/20' : 'bg-emerald-500/20'}`}>
+                            {item.type === 'business' ? (
+                              <Building2 className="size-5 text-[#FF8C00]" />
+                            ) : (
+                              <UserPlus className="size-5 text-emerald-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</p>
+                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              Joined via {item.channel} · {item.type === 'business' ? 'Business' : 'Bungee member'}
+                            </p>
+                            <p className="text-[10px] text-[#FF8C00] mt-0.5">{item.when}</p>
+                          </div>
+                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-1" />
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="size-16 rounded-full bg-[#FF8C00]/10 dark:bg-[#FF8C00]/20 flex items-center justify-center mb-4">
+                        <Users className="size-8 text-[#FF8C00]" />
+                      </div>
+                      <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Referral Activity Yet</h3>
+                      <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Your referral activity will appear here. Share your invite link to get started!
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          onClick={() => setShowReferModal("bungee")}
+                          className="bg-gradient-to-r from-[#FF8C00] to-orange-500 hover:opacity-90 text-white"
+                        >
+                          <Share2 className="size-4 mr-2" />
+                          Share Invite Link
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 )}
                 {commandCenterTab === "hiring" && (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -1024,19 +1102,19 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 {/* Stats Grid */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-2xl font-bold text-[#FF8C00]">0</p>
+                    <p className="text-2xl font-bold text-[#FF8C00]">{userStats.totalReferrals}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Referrals</p>
                   </div>
                   <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-2xl font-bold text-emerald-700">0</p>
+                    <p className="text-2xl font-bold text-emerald-700">{userStats.verifiedReferrals}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Completed</p>
                   </div>
                   <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-2xl font-bold text-blue-700">0</p>
+                    <p className="text-2xl font-bold text-blue-700">{Math.max(userStats.totalReferrals - userStats.verifiedReferrals, 0)}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pending</p>
                   </div>
                   <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-2xl font-bold text-fuchsia-700">0%</p>
+                    <p className="text-2xl font-bold text-fuchsia-700">{userStats.successRate}%</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Success Rate</p>
                   </div>
                 </div>
@@ -1044,11 +1122,29 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 {/* Recent Activity */}
                 <div className="bg-gray-800 rounded-xl p-3">
                   <h3 className="text-sm font-semibold text-white mb-2">Recent Activity</h3>
-                  <div className="text-center py-6">
-                    <Clock className="size-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No activity yet</p>
-                    <p className="text-xs text-gray-600">Start making referrals to see activity here</p>
-                  </div>
+                  {referralList.length > 0 && !isDemo ? (
+                    <div className="space-y-2">
+                      {referralList.slice(0, 5).map((referral) => (
+                        <div key={referral.id} className="flex items-center justify-between gap-2 py-2 border-b border-gray-700 last:border-0">
+                          <div className="min-w-0">
+                            <p className="text-sm text-white truncate">
+                              {getProfileDisplayName(referral.referred_user || {})}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {referral.referred_user?.user_type === 'business' ? 'Business signup' : 'Member signup'} · {formatReferralDate(referral.created_at)}
+                            </p>
+                          </div>
+                          <Badge className="bg-emerald-600 text-white border-0 text-[10px] shrink-0">Joined</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Clock className="size-8 text-gray-600 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No activity yet</p>
+                      <p className="text-xs text-gray-600">Start making referrals to see activity here</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1466,9 +1562,9 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 <div className={`rounded-xl p-3 mb-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Progress to Gray Cord</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>0/5 referrals</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{userStats.totalReferrals}/5 referrals</p>
                   </div>
-                  <Progress value={0} className="h-2" />
+                  <Progress value={Math.min((userStats.totalReferrals / 5) * 100, 100)} className="h-2" />
                   <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Complete 5 successful referrals to rank up</p>
                 </div>
 
@@ -2486,13 +2582,13 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               <div className="flex justify-center gap-6 pt-2">
                 <div className="text-center">
                   <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
-                    0
+                    {modalReferralCount}
                   </p>
                   <p className="text-xs text-gray-400">Successful Referrals</p>
                 </div>
                 <div className="text-center">
                   <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
-                    $0
+                    ${userStats.totalEarned.toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-400">Total Earned</p>
                 </div>
@@ -2786,8 +2882,8 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-gray-600 dark:text-gray-400">$0.00</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">0 referrals</p>
+                      <p className="font-semibold text-gray-600 dark:text-gray-400">${userStats.totalEarned.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{userStats.totalReferrals} referrals</p>
                     </div>
                   </div>
                   <p className="text-xs text-[#FF8C00] mt-2 text-center">Start referring to climb the ranks!</p>
