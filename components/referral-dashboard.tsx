@@ -70,6 +70,8 @@ import {
   ImageIcon,
   CheckCircle2,
   Clock,
+  Timer,
+  Store,
 } from "lucide-react"
 import { BungeeRankSystem, RankBadge, BUNGEE_RANKS } from "@/components/bungee-rank-system"
 import { BusinessLocatorMap } from "@/components/business-locator-map"
@@ -94,6 +96,90 @@ import {
   type ReferralStats,
   type UserReferral,
 } from "@/lib/referrals"
+
+// Achievements & Badges System — grouped by category.
+// Each badge is either unlocked, or shows progress toward its target.
+const BADGE_CATEGORIES = [
+  {
+    category: "Speed & Momentum",
+    badges: [
+      {
+        id: "speed-demon",
+        title: "Speed Demon",
+        description: "Submitted 3 successful referrals in a single weekend.",
+        icon: Zap,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "first-strike",
+        title: "First Strike",
+        description: "Made a referral within 48 hours of joining Bungee.",
+        icon: Timer,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "on-fire",
+        title: "On Fire",
+        description: "Submitted a referral 3 weeks in a row.",
+        icon: Flame,
+        unlocked: false,
+        progress: { current: 2, target: 3 } as { current: number; target: number } | null,
+      },
+    ],
+  },
+  {
+    category: "Network Builder",
+    badges: [
+      {
+        id: "icebreaker",
+        title: "Icebreaker",
+        description: "Brought in your very first business to the platform.",
+        icon: Store,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "market-maker",
+        title: "Market Maker",
+        description: "Brought in a batch of 10 businesses.",
+        icon: Building2,
+        unlocked: false,
+        progress: { current: 7, target: 10 } as { current: number; target: number } | null,
+      },
+      {
+        id: "talent-scout",
+        title: "Talent Scout",
+        description: "Referred 5 new cords who registered on the app.",
+        icon: Users,
+        unlocked: false,
+        progress: { current: 3, target: 5 } as { current: number; target: number } | null,
+      },
+    ],
+  },
+  {
+    category: "Placement & Payday",
+    badges: [
+      {
+        id: "matchmaker",
+        title: "Matchmaker",
+        description: "Your referred candidate got hired by a business.",
+        icon: Briefcase,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "lightning-rod",
+        title: "Lightning Rod",
+        description: "Received your first instant payout via the Lightning Network.",
+        icon: Bitcoin,
+        unlocked: false,
+        progress: null as { current: number; target: number } | null,
+      },
+    ],
+  },
+]
 
 interface UserProfile {
   id: string
@@ -1392,34 +1478,103 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Log in daily and make referrals to build your streak!</p>
                   </div>
 
-                  {/* Achievements Section - WITH GAME IMAGES */}
+                  {/* Achievements & Badges System - Categorized */}
                   <div>
-                    <h3 className={`font-bold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      <Trophy className="size-5 text-yellow-500" />
-                      Achievements
-                    </h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { image: "/images/rewards/first-referral-badge.png", name: "First Referral", desc: "Make your first referral", pts: 50, color: "#3B82F6", glow: "rgba(59,130,246,0.5)" },
-                        { image: "/images/rewards/speed-demon-badge.png", name: "Speed Demon", desc: "3 referrals in one day", pts: 100, color: "#F59E0B", glow: "rgba(245,158,11,0.5)" },
-                        { image: "/images/rewards/rising-star-badge.png", name: "Rising Star", desc: "Reach Gray Cord", pts: 200, color: "#8B5CF6", glow: "rgba(139,92,246,0.5)" },
-                      ].map((achievement, i) => (
-                        <div 
-                          key={i}
-                          className={`relative rounded-2xl p-4 text-center border-2 transition-all hover:scale-105 cursor-pointer overflow-hidden ${isDarkMode ? 'bg-gray-900/80 border-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:border-gray-300'}`}
-                          style={{ boxShadow: `0 0 20px ${achievement.glow}` }}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/20" />
-                          <div className="relative">
-                            <img 
-                              src={achievement.image} 
-                              alt={achievement.name} 
-                              className="size-20 mx-auto object-contain mb-2"
-                              style={{ filter: `drop-shadow(0 0 12px ${achievement.glow})` }}
-                            />
-                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{achievement.name}</p>
-                            <p className="text-[10px] text-gray-400 mb-1">{achievement.desc}</p>
-                            <p className="text-sm font-black" style={{ color: achievement.color, textShadow: `0 0 10px ${achievement.glow}` }}>+{achievement.pts} pts</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <Trophy className="size-5 text-yellow-500" />
+                        Achievements &amp; Badges
+                      </h3>
+                      {(() => {
+                        const allBadges = BADGE_CATEGORIES.flatMap((c) => c.badges)
+                        const unlockedCount = allBadges.filter((b) => b.unlocked).length
+                        return (
+                          <Badge className="bg-[#FF8C00] text-white border-0 text-xs">
+                            {unlockedCount}/{allBadges.length} Unlocked
+                          </Badge>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="space-y-5">
+                      {BADGE_CATEGORIES.map((category) => (
+                        <div key={category.category}>
+                          <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {category.category}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {category.badges.map((badge) => {
+                              const BadgeIcon = badge.icon
+                              const isUnlocked = badge.unlocked
+                              return (
+                                <div
+                                  key={badge.id}
+                                  className={`relative rounded-2xl p-4 border transition-all overflow-hidden ${
+                                    isUnlocked ? 'hover:scale-[1.02]' : ''
+                                  } ${
+                                    isDarkMode
+                                      ? isUnlocked ? 'bg-gray-900/80 border-[#FF8C00]/40' : 'bg-gray-900/40 border-gray-700'
+                                      : isUnlocked ? 'bg-white border-[#FF8C00]/40' : 'bg-gray-50 border-gray-200'
+                                  }`}
+                                  style={isUnlocked ? { boxShadow: '0 0 16px rgba(255,140,0,0.18)' } : undefined}
+                                >
+                                  {/* Lock indicator for locked badges */}
+                                  {!isUnlocked && (
+                                    <div className={`absolute top-2 right-2 size-6 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                      <Lock className="size-3 text-gray-400" />
+                                    </div>
+                                  )}
+
+                                  {/* Icon medallion */}
+                                  <div
+                                    className={`size-12 rounded-xl flex items-center justify-center mb-3 ${
+                                      isUnlocked
+                                        ? 'bg-gradient-to-br from-[#FF8C00] to-orange-400'
+                                        : isDarkMode ? 'bg-gray-800' : 'bg-gray-200'
+                                    }`}
+                                    style={isUnlocked ? { boxShadow: '0 4px 12px rgba(255,140,0,0.35)' } : undefined}
+                                  >
+                                    <BadgeIcon className={`size-6 ${isUnlocked ? 'text-white' : 'text-gray-400'}`} />
+                                  </div>
+
+                                  <p className={`text-sm font-bold ${
+                                    isUnlocked
+                                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
+                                      : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                                  }`}>
+                                    {badge.title}
+                                  </p>
+                                  <p className={`text-[11px] leading-snug mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {badge.description}
+                                  </p>
+
+                                  {/* Status: unlocked check or progress bar */}
+                                  {isUnlocked ? (
+                                    <div className="flex items-center gap-1 mt-2 text-emerald-500">
+                                      <CheckCircle2 className="size-3.5" />
+                                      <span className="text-[11px] font-semibold">Unlocked</span>
+                                    </div>
+                                  ) : badge.progress ? (
+                                    <div className="mt-2">
+                                      <div className={`h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                        <div
+                                          className="h-full rounded-full bg-[#FF8C00] transition-all duration-500"
+                                          style={{ width: `${Math.min(100, Math.round((badge.progress.current / badge.progress.target) * 100))}%` }}
+                                        />
+                                      </div>
+                                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        {badge.progress.current} / {badge.progress.target}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 mt-2 text-gray-400">
+                                      <Lock className="size-3" />
+                                      <span className="text-[11px] font-semibold">Locked</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       ))}
