@@ -17,6 +17,7 @@ import {
 import { SponsorCarousel } from "@/components/sponsor-carousel"
 import ServiceBountyWizard from "@/components/service-bounty-wizard"
 import ProductBountyWizard from "@/components/product-bounty-wizard"
+import ProductsServicesWizard from "@/components/products-services-wizard"
 import BountyCreationPage from "@/components/bounty-creation-page"
 import BusinessVerificationModal from "@/components/business-verification-modal"
 import CandidateManagementWizard from "@/components/candidate-management-wizard"
@@ -223,7 +224,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
     { id: 2, type: "order", message: "New order received", time: "5 min ago", unread: true },
     { id: 3, type: "bounty", message: "Bounty payment processed", time: "1 hour ago", unread: false },
   ] : [])
-  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "referrals" | "orders" | "bounties" | "invoices" | null>(null)
+  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | null>(null)
   const [showBungeeBlast, setShowBungeeBlast] = useState(false)
   const [showVeteranPool, setShowVeteranPool] = useState(false)
   const [showBungeePool, setShowBungeePool] = useState(false)
@@ -386,8 +387,15 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
   return (
     <>
+    {/* Products & Services full-screen wizard (own header + back arrow) */}
+    {activeTab === "productsServices" && (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <ProductsServicesWizard onClose={() => setActiveTab(null)} />
+      </div>
+    )}
+
     {/* Full Page Tab Views */}
-    {activeTab && (
+    {activeTab && activeTab !== "productsServices" && (
       <div className={`fixed inset-0 z-50 overflow-y-auto ${
         activeTab === "hire" || activeTab === "referrals" ? "bg-gradient-to-br from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/30 dark:to-pink-950/30" :
         activeTab === "services" || activeTab === "marketplace" ? "bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30" :
@@ -2034,7 +2042,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <Clock className="h-3 w-3" /> Order Activity
                           </h4>
                           <div className="space-y-2">
-                            {saleData.stage === 'Sale Confirmed' ? [
+                            {(saleData.stage === 'Sale Confirmed' ? [
                               { action: 'Product added to cart', time: '5 days ago', icon: ShoppingBag },
                               { action: 'Checkout initiated', time: '5 days ago', icon: CreditCard },
                               { action: 'Payment confirmed', time: '5 days ago', icon: Check },
@@ -2043,7 +2051,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                               { action: 'Product added to cart', time: '2 days ago', icon: ShoppingBag },
                               { action: 'Cart abandoned', time: '2 days ago', icon: AlertCircle },
                               { action: 'Reminder email sent', time: '1 day ago', icon: Mail },
-                            ].map((activity, idx) => (
+                            ]).map((activity, idx) => (
                               <div key={idx} className="flex items-center gap-2 text-[9px] sm:text-[11px]">
                                 <activity.icon className="h-3 w-3 text-gray-400" />
                                 <span className="flex-1 text-gray-600 dark:text-gray-400">{activity.action}</span>
@@ -2095,45 +2103,24 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
             {/* Main Action Cards - Clean Minimalist Design */}
             <div className="flex flex-col w-full gap-3 sm:gap-4 mb-3 sm:mb-6">
-              {/* Services Card - Clean White Card */}
+              {/* Products & Services Card - Unified entry that opens a chooser */}
               <button 
-                onClick={() => setActiveTab("services")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "services" ? "ring-2 ring-emerald-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-emerald-400"} bg-white dark:bg-gray-800`}
-              >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&h=150&fit=crop" 
-                      alt="Home services"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Promote Your Services</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Offer referral bounties and attract new local clients</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
-                </div>
-              </button>
-
-              {/* Products Card - Clean White Card */}
-              <button 
-                onClick={() => setActiveTab("products")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "products" ? "ring-2 ring-blue-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-blue-400"} bg-white dark:bg-gray-800`}
+                onClick={() => setActiveTab("productsServices")}
+                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "productsServices" ? "ring-2 ring-[#FF8C00] shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-[#FF8C00]/60"} bg-white dark:bg-gray-800`}
               >
                 <div className="flex items-center p-4 sm:p-5 gap-4">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
                     <img 
                       src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=150&h=150&fit=crop" 
-                      alt="Products store"
+                      alt="Products and services"
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Sell Your Products</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Showcase your catalog and incentivize peer-to-peer sales</p>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Products &amp; Services</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Add what you sell or provide and set word-of-mouth referral bounties</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#FF8C00] transition-colors" />
                 </div>
               </button>
 
@@ -2151,7 +2138,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                     />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post Jobs & Hire</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post Jobs &amp; Hire</h3>
                     <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Find qualified local candidates through trusted referrals</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 transition-colors" />
