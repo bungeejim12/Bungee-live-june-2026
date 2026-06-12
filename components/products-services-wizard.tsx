@@ -27,6 +27,9 @@ import {
   Tag,
   Gift,
   PartyPopper,
+  Wand2,
+  Globe,
+  ClipboardType,
 } from "lucide-react"
 
 type OfferingType = "product" | "service"
@@ -74,6 +77,15 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
   const [bountyMode, setBountyMode] = useState<BountyMode>("flat")
   const [bountyValue, setBountyValue] = useState("")
   const [payoutTrigger, setPayoutTrigger] = useState("")
+
+  // AI Assistant (auto-fill from a website or pasted description)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiSource, setAiSource] = useState<"url" | "text">("url")
+  const [aiUrl, setAiUrl] = useState("")
+  const [aiText, setAiText] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState("")
+  const [aiSuccess, setAiSuccess] = useState(false)
 
   const isProduct = offeringType === "product"
   const accent = "#FF8C00"
@@ -152,6 +164,56 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
   }
 
   const removeMedia = (url: string) => setMediaUrls((prev) => prev.filter((u) => u !== url))
+
+  // AI Assistant: scrape a URL or analyze pasted text, then auto-fill the form.
+  const runAiAssist = async () => {
+    setAiError("")
+    setAiSuccess(false)
+    const payload = aiSource === "url" ? { url: aiUrl.trim() } : { text: aiText.trim() }
+    if (aiSource === "url" && !aiUrl.trim()) {
+      setAiError("Enter your website or product page URL.")
+      return
+    }
+    if (aiSource === "text" && aiText.trim().length < 40) {
+      setAiError("Paste at least a sentence or two describing your offering.")
+      return
+    }
+    setAiLoading(true)
+    try {
+      const res = await fetch("/api/products-services/ai-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const result = await res.json()
+      if (!res.ok || result.error) {
+        setAiError(result.error || "The AI assistant couldn't generate content. Try again.")
+        return
+      }
+      const d = result.data
+      // Auto-fill fields, leaving anything the user already typed if AI returns empty.
+      if (d.offeringType === "product" || d.offeringType === "service") setOfferingType(d.offeringType)
+      if (d.name) setName(d.name)
+      if (d.summary) setSummary(d.summary)
+      if (d.deepDive) setDeepDive(d.deepDive)
+      if (Array.isArray(d.audienceTags) && d.audienceTags.length > 0) {
+        setAudienceTags(Array.from(new Set(d.audienceTags.map((t: string) => t.trim()).filter(Boolean))))
+      }
+      if (d.customerIncentive) setCustomerIncentive(d.customerIncentive)
+      setAiSuccess(true)
+      // Briefly show success, then close and jump to step 1 so they can review.
+      setTimeout(() => {
+        setAiOpen(false)
+        setAiSuccess(false)
+        setStep(1)
+      }, 1100)
+    } catch (err) {
+      console.log("[v0] AI assist client error:", err)
+      setAiError("Something went wrong reaching the assistant. Please try again.")
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   // Per-step validation
   const isStepValid = () => {
@@ -330,6 +392,31 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 sm:p-6">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{STEPS[step - 1].title}</h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">Step {step} of 4</p>
+
+          {/* AI ASSISTANT BANNER */}
+          <button
+            type="button"
+            onClick={() => {
+              setAiError("")
+              setAiSuccess(false)
+              setAiOpen(true)
+            }}
+            className="w-full flex items-center gap-3 mb-5 p-3.5 rounded-2xl border border-[#FF8C00]/40 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-[#FF8C00]/10 dark:to-amber-500/5 hover:border-[#FF8C00] hover:shadow-sm transition-all text-left"
+          >
+            <span className="size-9 rounded-xl bg-[#FF8C00] flex items-center justify-center shrink-0 shadow-sm">
+              <Wand2 className="size-4.5 text-white" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold text-gray-900 dark:text-white">
+                Let AI fill this out for you
+              </span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">
+                Paste your website and we&apos;ll draft your pitch, details &amp; audience
+              </span>
+            </span>
+            <Sparkles className="size-4 text-[#FF8C00] shrink-0" />
+          </button>
+
 
           {/* STEP 1: CORE INFORMATION */}
           {step === 1 && (
@@ -651,6 +738,132 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
           </div>
         </div>
       </div>
+
+      {/* AI ASSISTANT MODAL */}
+      {aiOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !aiLoading && setAiOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full sm:max-w-lg bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="size-10 rounded-xl bg-[#FF8C00] flex items-center justify-center shadow-sm">
+                  <Wand2 className="size-5 text-white" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">AI Listing Assistant</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">We&apos;ll draft your listing in seconds</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !aiLoading && setAiOpen(false)}
+                className="size-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400"
+                aria-label="Close assistant"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Source toggle */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              {([
+                { mode: "url" as const, icon: Globe, label: "From Website" },
+                { mode: "text" as const, icon: ClipboardType, label: "Paste Text" },
+              ]).map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setAiSource(mode)
+                    setAiError("")
+                  }}
+                  className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
+                    aiSource === mode
+                      ? "border-[#FF8C00] bg-[#FF8C00]/5"
+                      : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <Icon className={`size-4 ${aiSource === mode ? "text-[#FF8C00]" : "text-gray-400"}`} />
+                  <span className={`text-sm font-semibold ${aiSource === mode ? "text-[#FF8C00]" : "text-gray-600 dark:text-gray-300"}`}>
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {aiSource === "url" ? (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Website or product page URL</Label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                  <Input
+                    value={aiUrl}
+                    onChange={(e) => setAiUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !aiLoading) runAiAssist()
+                    }}
+                    placeholder="yourbusiness.com"
+                    className="pl-9 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    disabled={aiLoading}
+                  />
+                </div>
+                <p className="text-xs text-gray-400">We read the public page content to understand your offering.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Describe your product or service</Label>
+                <Textarea
+                  value={aiText}
+                  onChange={(e) => setAiText(e.target.value)}
+                  placeholder="Paste a description, brochure text, or a few notes about what you offer..."
+                  className="min-h-[120px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                  disabled={aiLoading}
+                />
+              </div>
+            )}
+
+            {aiError && (
+              <p className="text-xs text-red-600 flex items-center gap-1 mt-3">
+                <AlertCircle className="size-3" />
+                {aiError}
+              </p>
+            )}
+
+            {aiSuccess && (
+              <p className="text-xs text-emerald-600 flex items-center gap-1 mt-3 font-semibold">
+                <CheckCircle2 className="size-3.5" />
+                Listing drafted! Review your details...
+              </p>
+            )}
+
+            <Button
+              type="button"
+              onClick={runAiAssist}
+              disabled={aiLoading || aiSuccess}
+              className="w-full mt-5 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold disabled:opacity-60"
+            >
+              {aiLoading ? (
+                <>
+                  <Loader2 className="size-4 mr-1.5 animate-spin" />
+                  Analyzing &amp; drafting...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4 mr-1.5" />
+                  Generate My Listing
+                </>
+              )}
+            </Button>
+            <p className="text-[11px] text-center text-gray-400 mt-3">
+              AI-generated drafts are editable. Review prices and claims before launching.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
