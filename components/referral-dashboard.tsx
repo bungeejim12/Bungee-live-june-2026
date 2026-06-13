@@ -3236,15 +3236,19 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
             </div>
           )}
 
-          {/* Recurring Revenue tab — glowing to draw attention to lifetime earnings */}
+          {/* Recurring Revenue tab — neutral, professional styling */}
           <button
             onClick={() => setShowReferMenu((prev) => !prev)}
             aria-expanded={showReferMenu}
-            className="relative w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF8C00] hover:bg-[#E67E00] text-white py-3.5 px-6 font-bold transition-all active:scale-[0.98] animate-residual-glow"
+            className={`relative w-full flex items-center justify-center gap-2 rounded-xl border py-3.5 px-6 font-semibold transition-all active:scale-[0.99] ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-gray-100 hover:bg-gray-700/70 hover:border-gray-600'
+                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+            }`}
           >
-            <Repeat className="w-5 h-5" />
+            <Repeat className="w-4 h-4 text-[#FF8C00]" />
             <span className="text-sm">Recurring Revenue — Check Your Lifetime Earnings</span>
-            <ChevronUp className={`w-5 h-5 transition-transform ${showReferMenu ? '' : 'rotate-180'}`} />
+            <ChevronUp className={`w-4 h-4 transition-transform ${isDarkMode ? 'text-gray-400' : 'text-gray-400'} ${showReferMenu ? '' : 'rotate-180'}`} />
           </button>
         </div>
       </div>

@@ -164,20 +164,6 @@
   animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
 }
 
-@keyframes residual-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 140, 0, 0.55), 0 4px 14px rgba(255, 140, 0, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(255, 140, 0, 0), 0 4px 22px rgba(255, 140, 0, 0.6);
-  }
-}
-
-.animate-residual-glow {
-  animation: residual-glow 2.2s ease-in-out infinite;
-}
-
 .animate-count-up {
   animation: count-up 0.3s ease-out;
 }
