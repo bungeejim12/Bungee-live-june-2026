@@ -2125,52 +2125,73 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               )}
             </div>
 
-            {/* Tagline */}
-            <div className="text-center mt-2 sm:mt-6 mb-2 sm:mb-5">
-              <p className="text-xs sm:text-lg text-gray-700 dark:text-gray-300 font-medium">Select a category below to accelerate your growth.</p>
+            {/* Friendly Welcome Header */}
+            <div className="mt-3 sm:mt-6 mb-3 sm:mb-5">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white text-balance">
+                What would you like to do today?
+              </h2>
+              <p className="text-xs sm:text-base text-gray-500 dark:text-gray-400 mt-0.5">
+                Pick a category below to start growing with referrals.
+              </p>
             </div>
 
-            {/* Main Action Cards - Clean Minimalist Design */}
-            <div className="flex flex-col w-full gap-3 sm:gap-4 mb-3 sm:mb-6">
+            {/* Main Action Cards - Friendly, inviting card grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 w-full gap-3 sm:gap-4 mb-3 sm:mb-6">
               {/* Products & Services Card - Unified entry that opens a chooser */}
-              <button 
+              <button
                 onClick={() => setActiveTab("productsServices")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "productsServices" ? "ring-2 ring-[#FF8C00] shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-[#FF8C00]/60"} bg-white dark:bg-gray-800`}
+                className="group relative flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:border-[#FF8C00] hover:shadow-xl active:scale-[0.99] text-left"
               >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=150&h=150&fit=crop" 
-                      alt="Products and services"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="relative h-28 sm:h-32 w-full overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=300&fit=crop"
+                    alt="Products and services"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute top-3 left-3 size-10 sm:size-11 rounded-xl bg-white/95 dark:bg-gray-900/90 flex items-center justify-center shadow-md">
+                    <ShoppingBag className="size-5 text-[#FF8C00]" />
                   </div>
-                  <div className="flex-1 text-left">
+                </div>
+                <div className="flex items-start gap-3 p-4 sm:p-5">
+                  <div className="flex-1">
                     <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Products &amp; Services</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Add what you sell or provide and set word-of-mouth referral bounties</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      Add what you sell or provide and set word-of-mouth referral bounties.
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#FF8C00]">
+                      Get started
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#FF8C00] transition-colors" />
                 </div>
               </button>
 
-              {/* Hiring Card - Clean White Card */}
-              <button 
+              {/* Hiring Card */}
+              <button
                 onClick={() => setActiveTab("hire")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "hire" ? "ring-2 ring-fuchsia-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-fuchsia-400"} bg-white dark:bg-gray-800`}
+                className="group relative flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:border-[#FF8C00] hover:shadow-xl active:scale-[0.99] text-left"
               >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=150&h=150&fit=crop&crop=faces" 
-                      alt="Job interview handshake"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="relative h-28 sm:h-32 w-full overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=300&fit=crop&crop=faces"
+                    alt="Job interview handshake"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute top-3 left-3 size-10 sm:size-11 rounded-xl bg-white/95 dark:bg-gray-900/90 flex items-center justify-center shadow-md">
+                    <Users className="size-5 text-[#FF8C00]" />
                   </div>
-                  <div className="flex-1 text-left">
+                </div>
+                <div className="flex items-start gap-3 p-4 sm:p-5">
+                  <div className="flex-1">
                     <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post Jobs &amp; Hire</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Find qualified local candidates through trusted referrals</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      Find qualified local candidates through trusted referrals.
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#FF8C00]">
+                      Get started
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 transition-colors" />
                 </div>
               </button>
             </div>
