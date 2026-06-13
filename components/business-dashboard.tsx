@@ -466,7 +466,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
             <div className="animate-in fade-in duration-300">
               {showJobOrderWizard ? (
                 /* Show conversational AI Job Wizard directly */
-                <AiJobWizard onClose={() => setShowJobOrderWizard(false)} />
+                <AiJobWizard
+                  onClose={() => setShowJobOrderWizard(false)}
+                  business={{ businessName: userProfile?.business_name || businessName }}
+                  isDemo={isDemo}
+                />
               ) : (
                 /* Show hiring options */
                 <div className="space-y-6">
@@ -3955,7 +3959,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               <X className="size-5 text-gray-900 dark:text-white" />
             </button>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl p-5 sm:p-6">
-              <AiJobWizard onClose={() => setShowJobOrderWizard(false)} />
+              <AiJobWizard
+                onClose={() => setShowJobOrderWizard(false)}
+                business={{ businessName: userProfile?.business_name || businessName }}
+                isDemo={isDemo}
+              />
             </div>
           </div>
         </div>

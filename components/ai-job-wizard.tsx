@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { createJobOrder } from "@/app/actions/job-orders"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -24,10 +25,18 @@ import {
   Lightbulb,
   Megaphone,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react"
+
+interface BusinessContext {
+  businessName?: string | null
+  location?: string | null
+}
 
 interface AiJobWizardProps {
   onClose: () => void
+  business?: BusinessContext
+  isDemo?: boolean
 }
 
 type WorkModel = "On-Site" | "Hybrid" | "Remote"
@@ -67,7 +76,7 @@ const AI_PROMPTS = [
 
 const TOTAL_STEPS = 4
 
-export default function AiJobWizard({ onClose }: AiJobWizardProps) {
+export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardProps) {
   const [step, setStep] = useState(1)
   const [answers, setAnswers] = useState<Answers>({
     title: "",
@@ -82,6 +91,8 @@ export default function AiJobWizard({ onClose }: AiJobWizardProps) {
   const [summary, setSummary] = useState<JobSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Keep the transcript scrolled to the latest message.
@@ -99,7 +110,12 @@ export default function AiJobWizard({ onClose }: AiJobWizardProps) {
       const res = await fetch("/api/hiring/job-order-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "suggest", title }),
+        body: JSON.stringify({
+          action: "suggest",
+          title,
+          businessName: business?.businessName || undefined,
+          location: business?.location || undefined,
+        }),
       })
       const result = await res.json()
       if (res.ok && result.data) setSuggestion(result.data)
@@ -167,6 +183,42 @@ export default function AiJobWizard({ onClose }: AiJobWizardProps) {
       console.log("[v0] summary build failed:", err)
     } finally {
       setSummaryLoading(false)
+    }
+  }
+
+  // Persist the finished job order to Supabase, then show the success screen.
+  const handleSubmit = async () => {
+    if (!summary) return
+    setSaving(true)
+    setSaveError("")
+
+    // In demo mode there's no authenticated business, so skip the DB write.
+    if (isDemo) {
+      setTimeout(() => {
+        setSaving(false)
+        setSubmitted(true)
+      }, 700)
+      return
+    }
+
+    const bountyNum = Number.parseFloat(answers.bounty)
+    const res = await createJobOrder({
+      title: summary.title,
+      employmentType: "Full-time",
+      workModel: summary.workModel,
+      location: business?.location || undefined,
+      compensation: summary.compensation,
+      requirements: summary.requirements.join("\n"),
+      sellingPoints: summary.sellingPoints.join("\n"),
+      bountyAmount: Number.isFinite(bountyNum) ? bountyNum : undefined,
+      bountyTrigger: "Successful hire",
+      summary: summary.summary,
+    })
+    setSaving(false)
+    if (res.success) {
+      setSubmitted(true)
+    } else {
+      setSaveError(res.error || "Couldn't save the job order. Please try again.")
     }
   }
 
@@ -266,12 +318,28 @@ export default function AiJobWizard({ onClose }: AiJobWizardProps) {
         </div>
 
         <Button
-          onClick={() => setSubmitted(true)}
-          className="w-full mt-5 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold h-11"
+          onClick={handleSubmit}
+          disabled={saving}
+          className="w-full mt-5 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold h-11 disabled:opacity-60"
         >
-          <Send className="size-4 mr-1.5" />
-          Send to Cord Network
+          {saving ? (
+            <>
+              <Loader2 className="size-4 mr-1.5 animate-spin" />
+              Sending to Cord Network...
+            </>
+          ) : (
+            <>
+              <Send className="size-4 mr-1.5" />
+              Send to Cord Network
+            </>
+          )}
         </Button>
+        {saveError && (
+          <p className="text-xs text-red-600 flex items-center justify-center gap-1 mt-3">
+            <AlertCircle className="size-3" />
+            {saveError}
+          </p>
+        )}
         <p className="text-[11px] text-center text-gray-400 mt-3">
           Review the details above. AI drafts are editable before launch.
         </p>

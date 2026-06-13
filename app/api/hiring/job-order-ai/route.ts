@@ -17,6 +17,14 @@ export async function POST(req: Request) {
         return Response.json({ error: "A job title is required." }, { status: 400 })
       }
 
+      const businessName = String(body?.businessName ?? "").trim()
+      const location = String(body?.location ?? "").trim()
+      const contextLine =
+        (businessName ? `The hiring company is "${businessName}". ` : "") +
+        (location
+          ? `They are located in ${location}, so tailor compensation to that regional market. `
+          : "")
+
       const { experimental_output } = await generateText({
         model: "openai/gpt-5.4-mini",
         system:
@@ -25,6 +33,7 @@ export async function POST(req: Request) {
           "Keep every field short and practical.",
         prompt:
           `The owner wants to hire for this role: "${title}".\n` +
+          (contextLine ? contextLine + "\n" : "") +
           "Generate helpful scoping hints they can use as a starting point.",
         experimental_output: Output.object({
           schema: z.object({
