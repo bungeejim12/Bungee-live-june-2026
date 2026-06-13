@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceTextarea as Textarea } from '@/components/voice-textarea';
 import { DollarSign, Briefcase, Award, CheckCircle2, Sparkles, X, Globe, Loader2, ChevronLeft, ChevronRight, Check, Users, Building2, Wallet, Info, Mail, Copy, Share2, Package, Wrench, MessageSquare, ArrowLeft, ImageIcon, Upload, Percent, Gift, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   generateSmsPayload, 

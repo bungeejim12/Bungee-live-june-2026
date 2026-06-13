@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceTextarea as Textarea } from '@/components/voice-textarea';
 import { DollarSign, ShoppingBag, Target, Award, QrCode, Sparkles, Image, CheckCircle2, Mail, Users, Phone, Database, Plus, X, Globe, Loader2, FileText, Download, Copy, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { 
   generateSmsPayload, 
