@@ -23,6 +23,7 @@ function SignUpContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const referralCodeParam = searchParams.get("ref")
+  const asParam = searchParams.get("as") // tracking tag: "bungee" | "business"
   const [step, setStep] = useState<Step>("type")
   const [userType, setUserType] = useState<UserType | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -105,6 +106,16 @@ function SignUpContent() {
     clearStaleAuthState()
   }, [referralCodeParam])
 
+  // Honor the tracking tag from the referral link. `as=bungee` automatically
+  // classifies the new signup as a Bungee referrer (and `as=business` as a
+  // business) so the 18-month residual splits attribute to the right side.
+  useEffect(() => {
+    if (asParam === "bungee" || asParam === "business") {
+      setUserType(asParam)
+      setStep((current) => (current === "type" ? "details" : current))
+    }
+  }, [asParam])
+
   useEffect(() => {
     if (!referralCode) return
 
@@ -113,7 +124,10 @@ function SignUpContent() {
       const referrerData = await getReferrerByCode(referralCode)
       if (referrerData) {
         setReferrer(referrerData)
-        if (referrerData.user_type === "business") {
+        // Explicit `as` tag wins; otherwise fall back to the referrer's own type.
+        if (asParam === "bungee" || asParam === "business") {
+          setUserType(asParam)
+        } else if (referrerData.user_type === "business") {
           setUserType("business")
         }
       }
@@ -121,7 +135,7 @@ function SignUpContent() {
     }
 
     loadReferrer()
-  }, [referralCode])
+  }, [referralCode, asParam])
 
   // Format phone number for display
   const formatPhoneDisplay = (value: string) => {

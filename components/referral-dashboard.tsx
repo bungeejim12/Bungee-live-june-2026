@@ -104,7 +104,7 @@ import {
 } from "@/lib/referrals"
 import { MyReferralsValidation } from "@/components/my-referrals-validation"
 import { ReferralEarnings } from "@/components/referral-earnings"
-import { demoReferredAccounts } from "@/lib/payments"
+import { demoReferredAccounts, RESIDUAL_TIERS } from "@/lib/payments"
 import { VerifiedBungeeBadge } from "@/components/validation-badges"
 import { demoValidatedReferrals, computeQualityScore } from "@/lib/validation"
 
@@ -326,10 +326,12 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
     bungee: referralCode || "XXXXXXXX",
   }
 
-  const inviteLink = referralCode ? buildInviteLink(referralCode) : ""
+  // Each side gets a tracking tag so the referred account is classified
+  // correctly in the database, ensuring the 18-month residual splits calculate
+  // against the right side of the network.
   const referralLinks = {
-    business: inviteLink || "https://justbungee.com/auth/sign-up",
-    bungee: inviteLink || "https://justbungee.com/auth/sign-up",
+    business: referralCode ? buildInviteLink(referralCode, "business") : "https://justbungee.com/auth/sign-up",
+    bungee: referralCode ? buildInviteLink(referralCode, "bungee") : "https://justbungee.com/auth/sign-up",
   }
   const userCode = referralCode || "XXXXXXXX"
   const commandCenterTabs = [
@@ -372,7 +374,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         : "Join Me on BUNGEE - Earn Money Referring!"
       const body = showReferModal === "business"
         ? `Hey!\n\nI wanted to introduce you to BUNGEE - a platform that connects businesses with top talent and services through trusted referrals.\n\nUse my referral code: ${referralCodes[showReferModal]}\n\nOr sign up directly here: ${referralLinks[showReferModal]}\n\nLet me know if you have any questions!\n\n- ${userName}`
-        : `Hey!\n\nI've been using BUNGEE to earn extra income by referring businesses and people to opportunities. It's been great!\n\nJoin using my referral code: ${referralCodes[showReferModal]}\n\nOr sign up here: ${referralLinks[showReferModal]}\n\nWe both get bonuses when you sign up!\n\n- ${userName}`
+        : `Hey!\n\nI've been using BUNGEE to build a real residual income stream by referring businesses and people to opportunities. It's been great!\n\nJoin using my referral code: ${referralCodes[showReferModal]}\n\nOr sign up here: ${referralLinks[showReferModal]}\n\nRefer once, get paid for 18 months!\n\n- ${userName}`
       window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
     }
   }
@@ -2813,19 +2815,16 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 </div>
               </div>
 
-              {/* Bonus Info */}
+              {/* Residual Income Info — identical 18-month payout for users & businesses */}
               <div className={`p-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
                 <div className="flex items-start gap-2">
-                  <Gift className={`size-5 mt-0.5 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`} />
+                  <TrendingUp className={`size-5 mt-0.5 shrink-0 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`} />
                   <div>
                     <p className="text-sm font-semibold text-gray-900">
-                      {showReferModal === "business" ? "Earn $500 per business!" : "Earn $50 + 10% of their earnings!"}
+                      Refer once, get paid for 18 months.
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {showReferModal === "business" 
-                        ? "Plus 5% residual income from all transactions for 18 months"
-                        : "Get residual income from their referrals for 18 months"
-                      }
+                      Earn a residual cut of the 30% service fee on every transaction: 10% (months 1-6), 6.5% (months 7-12), then 3% (months 13-18).
                     </p>
                   </div>
                 </div>
@@ -3158,10 +3157,21 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
       {/* Bottom Action Bar - Reoccurring Revenue drop-up */}
       <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)]`}>
         <div className="relative max-w-lg mx-auto px-6 py-4">
-          {/* Drop-up panel with the two refer options */}
+          {/* Drop-up panel - Residual Income Referral Hub */}
           {showReferMenu && (
-            <div className={`absolute bottom-full left-0 right-0 mb-3 px-2 ${isDarkMode ? '' : ''}`}>
+            <div className="absolute bottom-full left-0 right-0 mb-3 px-2">
               <div className={`rounded-2xl border overflow-hidden shadow-2xl ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                {/* Passive Income banner */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-[#FF8C00] to-[#FFB347] px-4 py-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="w-5 h-5 text-white shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-white leading-tight">Your Network is Your Net Worth</p>
+                      <p className="text-[11px] font-medium text-white/90 leading-tight">Refer once, get paid for 18 months.</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Refer a User */}
                 <button
                   onClick={() => {
@@ -3175,7 +3185,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                   <div className="min-w-0">
                     <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a User</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Earn $50 + 10% of their earnings</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Unlock lifetime residual earnings on every transaction.</p>
                   </div>
                 </button>
 
@@ -3194,21 +3204,46 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                   <div className="min-w-0">
                     <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a Business</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Earn $500 per business</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Build your empire with recurring commissions on every job posted.</p>
                   </div>
                 </button>
+
+                {/* Shared 18-month residual schedule */}
+                <div className={`px-4 py-3 ${isDarkMode ? 'bg-gray-900/50 border-t border-gray-700' : 'bg-gray-50 border-t border-gray-100'}`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Your 18-month residual payout
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {RESIDUAL_TIERS.map((tier) => (
+                      <div
+                        key={tier.label}
+                        className={`rounded-lg px-2 py-2 text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}
+                      >
+                        <p className="text-base font-extrabold text-[#FF8C00] leading-none">
+                          {Math.round(tier.rate * 1000) / 10}%
+                        </p>
+                        <p className={`text-[9px] mt-1 leading-tight ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {tier.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`text-[10px] mt-2 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Commission on the 30% service fee — same payout whether you refer a user or a business.
+                  </p>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Reoccurring Revenue tab */}
+          {/* Recurring Revenue tab — glowing to draw attention to lifetime earnings */}
           <button
             onClick={() => setShowReferMenu((prev) => !prev)}
             aria-expanded={showReferMenu}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF8C00] hover:bg-[#E67E00] text-white py-3.5 px-6 font-bold shadow-md shadow-[#FF8C00]/30 transition-all active:scale-[0.98]"
+            className="relative w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF8C00] hover:bg-[#E67E00] text-white py-3.5 px-6 font-bold transition-all active:scale-[0.98] animate-residual-glow"
           >
             <Repeat className="w-5 h-5" />
-            <span className="text-sm">Reoccurring Revenue — Click Here</span>
+            <span className="text-sm">Recurring Revenue — Check Your Lifetime Earnings</span>
             <ChevronUp className={`w-5 h-5 transition-transform ${showReferMenu ? '' : 'rotate-180'}`} />
           </button>
         </div>

@@ -7,10 +7,12 @@ import { getReferrerDisplayName } from "@/lib/referrals"
 
 interface InvitePageProps {
   params: Promise<{ code: string }>
+  searchParams: Promise<{ as?: string }>
 }
 
-export default async function InvitePage({ params }: InvitePageProps) {
+export default async function InvitePage({ params, searchParams }: InvitePageProps) {
   const { code } = await params
+  const { as } = await searchParams
   const referrer = await getReferrerByCode(code)
 
   if (!referrer) {
@@ -39,7 +41,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
   const referrerName = getReferrerDisplayName(referrer)
   const isBusinessReferrer = referrer.user_type === "business"
-  const signUpUrl = `/auth/sign-up?ref=${encodeURIComponent(referrer.referral_code)}`
+  const trackTag = as === "bungee" || as === "business" ? as : null
+  const signUpParams = new URLSearchParams({ ref: referrer.referral_code })
+  if (trackTag) signUpParams.set("as", trackTag)
+  const signUpUrl = `/auth/sign-up?${signUpParams.toString()}`
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
