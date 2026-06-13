@@ -3734,8 +3734,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         </div>
       )}
 
-      {/* Veteran Pool Modal */}
-      {showVeteranPool && (
+      {/* Veteran Pool Modal — portaled to body so it escapes the hidden tab container */}
+      {showVeteranPool && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowVeteranPool(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3788,11 +3788,12 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* General Talent Pool Modal */}
-      {showBungeePool && (
+      {/* General Talent Pool Modal — portaled to body so it escapes the hidden tab container */}
+      {showBungeePool && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowBungeePool(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3855,7 +3856,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Pro Recruit Modal — portaled to body so it escapes the hidden tab container */}
