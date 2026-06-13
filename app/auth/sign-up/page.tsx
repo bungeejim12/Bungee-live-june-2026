@@ -14,9 +14,10 @@ import { completeSignupProfile, getReferrerByCode } from "@/app/actions/referral
 import { getReferrerDisplayName, type ReferrerInfo } from "@/lib/referrals"
 import { SupabaseConfigBanner } from "@/components/supabase-config-banner"
 import { isSupabaseClientConfigured } from "@/lib/supabase/client"
+import { AvatarCreator } from "@/components/avatar-creator"
 
 type UserType = "bungee" | "business"
-type Step = "type" | "details" | "verify-sms"
+type Step = "type" | "details" | "verify-sms" | "avatar"
 
 function SignUpContent() {
   const router = useRouter()
@@ -50,6 +51,9 @@ function SignUpContent() {
   
   // Development/configuration notice state
   const [showConfigNotice, setShowConfigNotice] = useState(false)
+
+  // Avatar onboarding state
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
 
   // Referral invite state
   const [referralCode, setReferralCode] = useState<string | null>(null)
@@ -350,6 +354,14 @@ function SignUpContent() {
           ? '/dashboard/business?authenticated=true' 
           : '/dashboard/bungee?authenticated=true'
         setRedirectPath(targetPath)
+
+        // Bungee users build their avatar before entering the dashboard.
+        if (userType === 'bungee') {
+          setStep('avatar')
+          setIsVerifyingOtp(false)
+          return
+        }
+
         setSessionAcquired(true)
         setIsVerifyingOtp(false)
         
@@ -409,6 +421,34 @@ function SignUpContent() {
     setIsLoading(false)
   }
 
+  // Persist the generated Bungee avatar, then continue to the dashboard.
+  const handleAvatarComplete = async (dataUrl: string) => {
+    if (isSavingAvatar) return
+    setIsSavingAvatar(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/avatar/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Could not save your avatar.')
+      }
+    } catch (e) {
+      // Non-blocking: let the user into the app even if the save fails.
+      console.error('[v0] avatar save failed:', e)
+    } finally {
+      setIsSavingAvatar(false)
+      if (redirectPath) router.push(redirectPath)
+    }
+  }
+
+  const handleSkipAvatar = () => {
+    if (redirectPath) router.push(redirectPath)
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -433,7 +473,7 @@ function SignUpContent() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-md shadow-md border-0 bg-white rounded-lg">
+        <Card className={`w-full ${step === "avatar" ? "max-w-2xl" : "max-w-md"} shadow-md border-0 bg-white rounded-lg`}>
 
           {referrer && (
             <div className="mx-6 mt-6 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
@@ -805,6 +845,35 @@ function SignUpContent() {
                     Back to Edit Details
                   </Button>
                 </div>
+              </CardContent>
+            </>
+          )}
+
+          {/* Step 4: Bungee Avatar Creator */}
+          {step === "avatar" && (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold text-slate-900">Create Your Bungee</CardTitle>
+                <CardDescription className="text-slate-600">
+                  Upload a photo or describe your vibe. We&apos;ll build your avatar on a Green Cord body that levels
+                  up as you rank.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AvatarCreator
+                  level={1}
+                  firstName={firstName}
+                  onComplete={handleAvatarComplete}
+                  saving={isSavingAvatar}
+                />
+                <button
+                  type="button"
+                  onClick={handleSkipAvatar}
+                  disabled={isSavingAvatar}
+                  className="mt-4 w-full text-sm font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                >
+                  Skip for now
+                </button>
               </CardContent>
             </>
           )}
