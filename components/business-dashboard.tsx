@@ -219,13 +219,29 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
       ]
     }
   ] : []
+  // Service / lead-generation referral activity (shared by Activity Center + Campaigns view)
+  const serviceLeadsData = isDemo ? [
+    { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
+    { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
+    { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
+    { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
+    { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
+  ] : []
+  // Product-sale referral activity (shared by Activity Center + Campaigns view)
+  const productSalesData = isDemo ? [
+    { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
+    { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
+    { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
+    { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
+    { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
+  ] : []
   // Notifications - empty for new users, sample data only in demo mode
   const [notifications] = useState(isDemo ? [
     { id: 1, type: "referral", message: "New referral from Marcus T.", time: "Just now", unread: true },
     { id: 2, type: "order", message: "New order received", time: "5 min ago", unread: true },
     { id: 3, type: "bounty", message: "Bounty payment processed", time: "1 hour ago", unread: false },
   ] : [])
-  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | null>(null)
+  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | "campaigns" | null>(null)
   const [showBungeeBlast, setShowBungeeBlast] = useState(false)
   const [showVeteranPool, setShowVeteranPool] = useState(false)
   const [showBungeePool, setShowBungeePool] = useState(false)
@@ -425,6 +441,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         activeTab === "services" || activeTab === "marketplace" ? "bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30" :
         activeTab === "orders" ? "bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30" :
         activeTab === "bounties" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
+        activeTab === "campaigns" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
         "bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30"
       }`}>
         {/* Header - Clean White Minimalist */}
@@ -446,6 +463,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "referrals" && "Applicant Tracking"}
                   {activeTab === "orders" && "Orders"}
                   {activeTab === "bounties" && "Active Campaigns"}
+                  {activeTab === "campaigns" && "Campaigns"}
                   {activeTab === "invoices" && "Invoices"}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -456,6 +474,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "referrals" && "Manage referred candidates"}
                   {activeTab === "orders" && "Track customer orders"}
                   {activeTab === "bounties" && "Your active referral campaigns"}
+                  {activeTab === "campaigns" && "All your referral activity in one place"}
                   {activeTab === "invoices" && "Payment history"}
                 </p>
               </div>
@@ -852,6 +871,160 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           )}
+
+          {/* Campaigns Tab Full Page - aggregated referral activity */}
+          {activeTab === "campaigns" && (() => {
+            const openInActivityCenter = (itemKey: string) => {
+              setExpandedCommandItem(itemKey)
+              setIsCommandCenterOpen(true)
+              setActiveTab(null)
+            }
+            const confirmedSales = productSalesData.filter(s => s.stage === "Sale Confirmed")
+            const totalSalesValue = confirmedSales.reduce((sum, s) => sum + Number.parseFloat(s.amount.replace(/[$,]/g, "")), 0)
+            const totalLeadBounties = serviceLeadsData.reduce((sum, l) => sum + Number.parseFloat(l.bounty.replace(/[$,]/g, "")), 0)
+            return (
+              <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-300">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-[#FF8C00]">{hiringCandidates.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Active Candidates</p>
+                  </div>
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-600">{serviceLeadsData.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Open Leads</p>
+                  </div>
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">{confirmedSales.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Confirmed Sales</p>
+                  </div>
+                </div>
+
+                {/* Hiring Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                      <Users className="size-4 text-[#FF8C00]" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Hiring Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">Candidates moving through your pipeline</p>
+                    </div>
+                    <Badge className="bg-orange-50 dark:bg-orange-900/20 text-[#FF8C00] border-orange-200 dark:border-orange-800 text-[10px] sm:text-xs font-semibold">{hiringCandidates.length} Active</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {hiringCandidates.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No active hiring campaigns yet.</p>
+                    )}
+                    {hiringCandidates.map(cand => (
+                      <button
+                        key={cand.id}
+                        onClick={() => openInActivityCenter(`candidate-${cand.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-orange-50/60 dark:hover:bg-orange-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-[#FF8C00] font-bold shrink-0">
+                          {cand.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{cand.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{cand.role}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Badge className="bg-orange-50 dark:bg-orange-900/20 text-[#FF8C00] border-orange-200 dark:border-orange-800 text-[10px] font-medium">
+                            {cand.score ? `Round ${cand.currentStep}: ${cand.score}%` : "Video Pending"}
+                          </Badge>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{cand.lastActivity}</p>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Service / Lead Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                      <Briefcase className="size-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Service Lead Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">${totalLeadBounties.toLocaleString()} in referral bounties at stake</p>
+                    </div>
+                    <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800 text-[10px] sm:text-xs font-semibold">{serviceLeadsData.length} Open</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {serviceLeadsData.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No service lead campaigns yet.</p>
+                    )}
+                    {serviceLeadsData.map(lead => (
+                      <button
+                        key={lead.id}
+                        onClick={() => openInActivityCenter(`lead-${lead.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-emerald-50/60 dark:hover:bg-emerald-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-bold shrink-0">
+                          {lead.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{lead.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{lead.service} · {lead.company}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono font-semibold text-xs text-emerald-600">{lead.bounty}</span>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{lead.stage}</p>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Product Sale Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                      <ShoppingBag className="size-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Product Sale Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">${totalSalesValue.toLocaleString()} in confirmed referred sales</p>
+                    </div>
+                    <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800 text-[10px] sm:text-xs font-semibold">{productSalesData.length} Logs</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {productSalesData.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No product sale campaigns yet.</p>
+                    )}
+                    {productSalesData.map(sale => (
+                      <button
+                        key={sale.id}
+                        onClick={() => openInActivityCenter(`sale-${sale.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-blue-50/60 dark:hover:bg-blue-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                          {sale.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{sale.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{sale.item}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-semibold text-xs text-gray-900 dark:text-white">{sale.amount}</span>
+                          <Badge className={`block mt-0.5 text-[9px] font-medium border ${
+                            sale.stage === "Sale Confirmed"
+                              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800"
+                              : "bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800"
+                          }`}>{sale.stage}</Badge>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Bounties Tab Full Page */}
           {activeTab === "bounties" && (
@@ -1427,13 +1600,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       <Badge className="text-[8px] sm:text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800 font-medium">5 Open</Badge>
                     </div>
                     <div className="p-2 sm:p-2.5 flex-1 overflow-y-auto space-y-2 sm:space-y-2.5">
-                      {[
-                        { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
-                        { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
-                        { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
-                        { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
-                        { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
-                      ].map(lead => (
+                      {serviceLeadsData.map(lead => (
                         <button 
                           key={lead.id}
                           onClick={() => setExpandedCommandItem(`lead-${lead.id}`)}
@@ -1469,13 +1636,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       <Badge className="text-[8px] sm:text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800 font-medium">5 Logs</Badge>
                     </div>
                     <div className="p-1.5 sm:p-2 flex-1 overflow-y-auto space-y-1.5 sm:space-y-2">
-                      {[
-                        { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
-                        { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
-                        { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
-                        { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
-                        { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
-                      ].map(sale => (
+                      {productSalesData.map(sale => (
                         <button 
                           key={sale.id}
                           onClick={() => setExpandedCommandItem(`sale-${sale.id}`)}
@@ -1908,13 +2069,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {/* Lead Detail Dashboard */}
                   {expandedCommandItem.startsWith('lead-') && (() => {
                     const leadId = expandedCommandItem.replace('lead-', '')
-                    const leadData = [
-                      { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
-                      { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
-                      { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
-                      { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
-                      { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
-                    ].find(l => l.id === leadId)
+                    const leadData = serviceLeadsData.find(l => l.id === leadId)
                     if (!leadData) return null
                     return (
                       <div className="space-y-3 sm:space-y-4">
@@ -2012,13 +2167,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {/* Sale Detail Dashboard */}
                   {expandedCommandItem.startsWith('sale-') && (() => {
                     const saleId = expandedCommandItem.replace('sale-', '')
-                    const saleData = [
-                      { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
-                      { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
-                      { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
-                      { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
-                      { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
-                    ].find(s => s.id === saleId)
+                    const saleData = productSalesData.find(s => s.id === saleId)
                     if (!saleData) return null
                     return (
                       <div className="space-y-3 sm:space-y-4">
@@ -4311,17 +4460,17 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         <div className="flex items-center justify-around py-3 px-6 max-w-lg mx-auto">
           {/* Campaigns */}
           <button 
-            onClick={() => setActiveTab(null)}
+            onClick={() => setActiveTab("campaigns")}
             className="flex flex-col items-center gap-1 group"
           >
             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${
-              !activeTab 
+              activeTab === "campaigns"
                 ? 'bg-[#FF8C00]/10 border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20' 
                 : 'bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700'
             }`}>
-              <Megaphone className={`w-5 h-5 ${!activeTab ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
+              <Megaphone className={`w-5 h-5 ${activeTab === "campaigns" ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
             </div>
-            <span className={`text-xs font-semibold ${!activeTab ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Campaigns</span>
+            <span className={`text-xs font-semibold ${activeTab === "campaigns" ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Campaigns</span>
           </button>
 
           {/* Analytics */}
