@@ -60,6 +60,7 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
+  Repeat,
   Wrench,
   Package,
   Coins,
@@ -231,6 +232,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
   const [showBusinessLocator, setShowBusinessLocator] = useState(false)
   const [showReferModal, setShowReferModal] = useState<"business" | "bungee" | null>(null)
+  const [showReferMenu, setShowReferMenu] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(() => {
@@ -3154,33 +3156,71 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         </div>
       )}
 
-      {/* Bottom Action Bar - Three Circles with Icons */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)]`}>
-        <div className="flex items-start justify-around py-4 px-6 max-w-lg mx-auto">
-          {/* Refer User */}
-          <button 
-            onClick={() => setShowReferModal("bungee")}
-            className="flex flex-col items-center gap-1.5 group"
-          >
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all group-active:scale-95 animate-pulse-ring ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20`}>
-              <UserPlus className="w-6 h-6 text-[#FF8C00]" />
-            </div>
-            <span className="text-xs font-semibold text-[#FF8C00]">Refer User</span>
-            <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Earn 100 points per referral</span>
-          </button>
+      {/* Drop-up backdrop - closes menu on outside click */}
+      {showReferMenu && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+          onClick={() => setShowReferMenu(false)}
+        />
+      )}
 
-          {/* Refer Business */}
-          <button 
-            onClick={() => setShowReferModal("business")}
-            className="flex flex-col items-center gap-1.5 group"
-          >
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-              <Building2 className={`w-6 h-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+      {/* Bottom Action Bar - Reoccurring Revenue drop-up */}
+      <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)]`}>
+        <div className="relative max-w-lg mx-auto px-6 py-4">
+          {/* Drop-up panel with the two refer options */}
+          {showReferMenu && (
+            <div className={`absolute bottom-full left-0 right-0 mb-3 px-2 ${isDarkMode ? '' : ''}`}>
+              <div className={`rounded-2xl border overflow-hidden shadow-2xl ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                {/* Refer a User */}
+                <button
+                  onClick={() => {
+                    setShowReferMenu(false)
+                    setShowReferModal("bungee")
+                  }}
+                  className={`w-full flex items-center gap-4 p-4 text-left transition-colors ${isDarkMode ? 'hover:bg-gray-700/60' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/15 border-2 border-emerald-500">
+                    <UserPlus className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a User</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Earn $50 + 10% of their earnings</p>
+                  </div>
+                </button>
+
+                <div className={`h-px ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`} />
+
+                {/* Refer a Business */}
+                <button
+                  onClick={() => {
+                    setShowReferMenu(false)
+                    setShowReferModal("business")
+                  }}
+                  className={`w-full flex items-center gap-4 p-4 text-left transition-colors ${isDarkMode ? 'hover:bg-gray-700/60' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-[#FF8C00]/15 border-2 border-[#FF8C00]">
+                    <Building2 className="w-6 h-6 text-[#FF8C00]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a Business</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Earn $500 per business</p>
+                  </div>
+                </button>
+              </div>
             </div>
-            <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Refer Biz</span>
-            <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Earn 100 points per referral</span>
+          )}
+
+          {/* Reoccurring Revenue tab */}
+          <button
+            onClick={() => setShowReferMenu((prev) => !prev)}
+            aria-expanded={showReferMenu}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#FF8C00] hover:bg-[#E67E00] text-white py-3.5 px-6 font-bold shadow-md shadow-[#FF8C00]/30 transition-all active:scale-[0.98]"
+          >
+            <Repeat className="w-5 h-5" />
+            <span className="text-sm">Reoccurring Revenue — Click Here</span>
+            <ChevronUp className={`w-5 h-5 transition-transform ${showReferMenu ? '' : 'rotate-180'}`} />
           </button>
-      </div>
+        </div>
       </div>
 
       {/* Floating Ask Bungee Button - Draggable, positions itself */}
