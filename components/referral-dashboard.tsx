@@ -6,6 +6,9 @@ import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DocumentSignModal, type SignedRecord } from "@/components/document-sign-modal"
+import { BUNGEE_DOCUMENTS, type LegalDocument } from "@/lib/legal-documents"
+import { useSignedDocuments } from "@/hooks/use-signed-documents"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { BungeeCordIcon, CORD_COLORS } from "@/components/bungee-cord-icon"
@@ -72,6 +75,8 @@ import {
   Clock,
   Timer,
   Store,
+  FileText,
+  AlertCircle,
 } from "lucide-react"
 import { BungeeRankSystem, RankBadge, BUNGEE_RANKS } from "@/components/bungee-rank-system"
 import { BusinessLocatorMap } from "@/components/business-locator-map"
@@ -249,7 +254,16 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const [detailsModalItem, setDetailsModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
   const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [walletOpen, setWalletOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTaxVerification, setShowTaxVerification] = useState(false)
+
+  // Legal documents: review, sign, and track completion (Bungee referrer side)
+  const { documents: signedDocs, loading: signedDocsLoading, addLocal: addSignedDoc } = useSignedDocuments({ isDemo })
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocument | null>(null)
+  const signedKeys = new Set(signedDocs.map((d) => d.doc_key))
+  const handleDocSigned = (record: SignedRecord) => {
+    addSignedDoc({ ...record, audience: "bungee" })
+  }
   const [isTaxVerified, setIsTaxVerified] = useState(isDemo ? true : (userProfile?.tax_verified ?? false))
   const [referralList, setReferralList] = useState<UserReferral[]>([])
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false)
@@ -609,6 +623,15 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   <Wallet className="size-4 text-gray-500" />
                   <span className="text-xs sm:text-sm font-medium">Wallet</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>$0</span>
+                </button>
+
+                {/* Settings Button */}
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 hover:border-gray-500 text-gray-200' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'}`}
+                >
+                  <Settings className="size-4 text-gray-500" />
+                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Settings</span>
                 </button>
               </div>
               
@@ -3473,6 +3496,149 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         userId={userProfile?.id || user?.id || ''}
         isDarkMode={isDarkMode}
         pendingAmount="$0.00"
+      />
+
+      {/* Settings Modal — Legal & Agreements */}
+      {settingsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            className={`relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`p-5 border-b flex items-center justify-between ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
+                  <Settings className="size-5" />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h2>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Legal &amp; Agreements</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1">
+              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Review and sign Bungee&apos;s ground rules, terms, and agreements. Completed documents are stored here and
+                a copy is sent to the Bungee compliance team. These confirm you are an independent referrer, not an
+                employee of Bungee.
+              </p>
+
+              <div className="space-y-3">
+                {BUNGEE_DOCUMENTS.map((doc) => {
+                  const isSigned = signedKeys.has(doc.key)
+                  const signedRecord = signedDocs.find((d) => d.doc_key === doc.key)
+                  return (
+                    <div
+                      key={doc.key}
+                      className={`p-4 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${
+                              isSigned ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-400'
+                            }`}
+                          >
+                            {isSigned ? <CheckCircle2 className="size-5" /> : <FileText className="size-5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {doc.title}
+                            </h4>
+                            <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {doc.summary}
+                            </p>
+                          </div>
+                        </div>
+                        {isSigned ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shrink-0">
+                            Completed
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 shrink-0">Not Signed</Badge>
+                        )}
+                      </div>
+                      {isSigned && signedRecord ? (
+                        <p className={`mt-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Signed by {signedRecord.signer_name} on {new Date(signedRecord.signed_at).toLocaleDateString()} ·{' '}
+                          {doc.version}
+                        </p>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => setActiveLegalDoc(doc)}
+                          className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00] text-white"
+                        >
+                          Review &amp; Sign
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Status summary */}
+              {(() => {
+                const signedCount = BUNGEE_DOCUMENTS.filter((d) => signedKeys.has(d.key)).length
+                const remaining = BUNGEE_DOCUMENTS.length - signedCount
+                if (signedDocsLoading) {
+                  return (
+                    <div className={`mt-5 p-4 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading your documents…</p>
+                    </div>
+                  )
+                }
+                if (remaining === 0) {
+                  return (
+                    <div className="mt-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-5" />
+                        <span className="text-sm font-semibold">All agreements signed</span>
+                      </div>
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Your agreements are complete and on file with Bungee compliance.
+                      </p>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="mt-5 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="size-5" />
+                      <span className="text-sm font-semibold">
+                        {remaining} agreement{remaining === 1 ? '' : 's'} to review
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Sign all agreements to keep your Bungee account in good standing.
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legal document review & sign modal */}
+      <DocumentSignModal
+        document={activeLegalDoc}
+        open={activeLegalDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveLegalDoc(null)
+        }}
+        onSigned={handleDocSigned}
+        isDemo={isDemo}
       />
 
     </div>

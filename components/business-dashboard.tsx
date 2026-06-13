@@ -18,6 +18,9 @@ import {
 import { SponsorCarousel } from "@/components/sponsor-carousel"
 import ServiceBountyWizard from "@/components/service-bounty-wizard"
 import ProductBountyWizard from "@/components/product-bounty-wizard"
+import { DocumentSignModal, type SignedRecord } from "@/components/document-sign-modal"
+import { BUSINESS_DOCUMENTS, type LegalDocument } from "@/lib/legal-documents"
+import { useSignedDocuments } from "@/hooks/use-signed-documents"
 import ProductsServicesWizard from "@/components/products-services-wizard"
 import BountyCreationPage from "@/components/bounty-creation-page"
 import BusinessVerificationModal from "@/components/business-verification-modal"
@@ -146,6 +149,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
   // Payout method preferences shown in the Wallet
   const [cryptoPayoutEnabled, setCryptoPayoutEnabled] = useState(false)
   const [cashPayoutEnabled, setCashPayoutEnabled] = useState(true)
+
+  // Legal documents: review, sign, and track completion
+  const { documents: signedDocs, loading: signedDocsLoading, addLocal: addSignedDoc } = useSignedDocuments({ isDemo })
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocument | null>(null)
+  const signedKeys = new Set(signedDocs.map((d) => d.doc_key))
+  const handleDocSigned = (record: SignedRecord) => {
+    addSignedDoc({ ...record, audience: "business" })
+  }
 
   // Toggle candidate expansion
   const toggleCandidate = (candidateId: string) => {
@@ -3916,69 +3927,63 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               {settingsTab === "legal" && (
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Complete the required contracts to activate your business on Bungee.
+                    Review and sign the required agreements to activate your business on Bungee. Completed documents are
+                    stored in your settings and a copy is sent to the Bungee compliance team.
                   </p>
-                  
-                  {/* Contract List */}
+
+                  {/* Contract List — data-driven from the shared legal document library */}
                   <div className="space-y-3">
-                    {/* Service Agreement */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
+                    {BUSINESS_DOCUMENTS.map((doc) => {
+                      const isSigned = signedKeys.has(doc.key)
+                      const signedRecord = signedDocs.find((d) => d.doc_key === doc.key)
+                      return (
+                        <div
+                          key={doc.key}
+                          className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`size-10 rounded-lg flex items-center justify-center ${
+                                  isSigned ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-400"
+                                }`}
+                              >
+                                {isSigned ? <CheckCircle2 className="size-5" /> : <FileText className="size-5" />}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                  {doc.title}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{doc.summary}</p>
+                              </div>
+                            </div>
+                            {isSigned ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shrink-0">
+                                Completed
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 shrink-0">Not Signed</Badge>
+                            )}
                           </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Service Agreement</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Required to use Bungee services</p>
-                          </div>
+                          {isSigned && signedRecord ? (
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                              Signed by {signedRecord.signer_name} on{" "}
+                              {new Date(signedRecord.signed_at).toLocaleDateString()} · {doc.version}
+                            </p>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => setActiveLegalDoc(doc)}
+                              className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00] text-white"
+                            >
+                              Review &amp; Sign
+                            </Button>
+                          )}
                         </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* Referral Terms */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Referral Terms</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Bounty payment agreement</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* Privacy Policy */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Privacy Policy</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Data handling agreement</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* W-9 Form */}
+                      )
+                    })}
+
+                    {/* W-9 Form — handled via upload, not e-signature */}
                     <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -3997,21 +4002,62 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* Status Summary */}
-                  <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-                    <div className="flex items-center gap-2 text-red-400">
-                      <AlertCircle className="size-5" />
-                      <span className="text-sm font-semibold">3 contracts require attention</span>
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Complete all contracts to fully activate your account.</p>
-                  </div>
+                  {(() => {
+                    const signedCount = BUSINESS_DOCUMENTS.filter((d) => signedKeys.has(d.key)).length
+                    const remaining = BUSINESS_DOCUMENTS.length - signedCount
+                    if (signedDocsLoading) {
+                      return (
+                        <div className="mt-6 p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Loading your documents…</p>
+                        </div>
+                      )
+                    }
+                    if (remaining === 0) {
+                      return (
+                        <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="size-5" />
+                            <span className="text-sm font-semibold">All agreements signed</span>
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            Your agreements are complete and on file with Bungee compliance.
+                          </p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                        <div className="flex items-center gap-2 text-red-400">
+                          <AlertCircle className="size-5" />
+                          <span className="text-sm font-semibold">
+                            {remaining} agreement{remaining === 1 ? "" : "s"} require attention
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          Complete all agreements to fully activate your account.
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Legal document review & sign modal */}
+      <DocumentSignModal
+        document={activeLegalDoc}
+        open={activeLegalDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveLegalDoc(null)
+        }}
+        onSigned={handleDocSigned}
+        isDemo={isDemo}
+      />
 
       {/* Veteran Pool Modal — portaled to body so it escapes the hidden tab container */}
       {showVeteranPool && isMounted && createPortal(
