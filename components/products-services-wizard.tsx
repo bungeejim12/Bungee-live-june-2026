@@ -264,38 +264,56 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <button
               onClick={() => chooseType("product")}
-              className="group flex flex-col items-center text-center gap-6 p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
+              className="group flex flex-col text-center overflow-hidden rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
             >
-              <div className="size-20 rounded-2xl bg-[#FF8C00] flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-105 transition-transform">
-                <Boxes className="size-10 text-white" strokeWidth={2.5} />
+              <div className="relative h-40 sm:h-44 w-full overflow-hidden">
+                <img
+                  src="/images/offering-product.png"
+                  alt="Assorted physical and digital products from a catalog"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 size-16 rounded-2xl bg-[#FF8C00] flex items-center justify-center shadow-lg shadow-orange-500/40 ring-4 ring-white dark:ring-gray-800">
+                  <Boxes className="size-8 text-white" strokeWidth={2.5} />
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Product</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-                  Upload physical or digital items from your catalog and set your commission.
-                </p>
+              <div className="flex flex-col items-center gap-5 px-8 pt-12 pb-9">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Product</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                    Upload physical or digital items from your catalog and set your commission.
+                  </p>
+                </div>
+                <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
+                  Get started <ChevronRight className="size-4" />
+                </span>
               </div>
-              <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
-                Get started <ChevronRight className="size-4" />
-              </span>
             </button>
 
             <button
               onClick={() => chooseType("service")}
-              className="group flex flex-col items-center text-center gap-6 p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
+              className="group flex flex-col text-center overflow-hidden rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
             >
-              <div className="size-20 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform">
-                <Briefcase className="size-10 text-white" strokeWidth={2.5} />
+              <div className="relative h-40 sm:h-44 w-full overflow-hidden">
+                <img
+                  src="/images/offering-service.png"
+                  alt="A professional service provider working with a client"
+                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 size-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/40 ring-4 ring-white dark:ring-gray-800">
+                  <Briefcase className="size-8 text-white" strokeWidth={2.5} />
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Service</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-                  Define your specialized services and empower Bungees to secure your next client.
-                </p>
+              <div className="flex flex-col items-center gap-5 px-8 pt-12 pb-9">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Service</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                    Define your specialized services and empower Bungees to secure your next client.
+                  </p>
+                </div>
+                <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
+                  Get started <ChevronRight className="size-4" />
+                </span>
               </div>
-              <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
-                Get started <ChevronRight className="size-4" />
-              </span>
             </button>
           </div>
         </div>
