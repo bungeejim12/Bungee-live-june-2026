@@ -239,7 +239,9 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const [activeTab, setActiveTab] = useState("opportunities")
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [commandCenterOpen, setCommandCenterOpen] = useState(false)
-  const [commandCenterTab, setCommandCenterTab] = useState<"referrals" | "hiring" | "products" | "services">("referrals")
+  const [commandCenterTab, setCommandCenterTab] = useState<"referrals" | "hiring" | "productsServices">("referrals")
+  // Toggle within the merged "Products & Services" command-center tab
+  const [productServiceView, setProductServiceView] = useState<"products" | "services">("products")
   const [shareModalItem, setShareModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
   const [detailsModalItem, setDetailsModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
   const [copiedShareLink, setCopiedShareLink] = useState(false)
@@ -308,8 +310,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const commandCenterTabs = [
     { id: "referrals" as const, label: "Referrals", icon: Users, color: "text-[#FF8C00]", bgColor: "bg-[#FF8C00]", count: isDemo ? 5 : userStats.totalReferrals },
     { id: "hiring" as const, label: "Hiring", icon: Briefcase, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500", count: isDemo ? 3 : 0 },
-    { id: "products" as const, label: "Products", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: isDemo ? 2 : 0 },
-    { id: "services" as const, label: "Services", icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500", count: isDemo ? 4 : 0 },
+    { id: "productsServices" as const, label: "Products & Services", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: isDemo ? 6 : 0 },
   ]
   const modalReferralCount =
     showReferModal === "business" ? userStats.businessReferrals : userStats.bungeeReferrals
@@ -681,7 +682,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                       onClick={() => setCommandCenterTab(tab.id)}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-all ${
                         commandCenterTab === tab.id
-                          ? `${tab.color} border-b-2 ${tab.id === 'referrals' ? 'border-[#FF8C00]' : tab.id === 'hiring' ? 'border-fuchsia-500' : tab.id === 'products' ? 'border-blue-500' : 'border-emerald-500'}`
+                          ? `${tab.color} border-b-2 ${tab.id === 'referrals' ? 'border-[#FF8C00]' : tab.id === 'hiring' ? 'border-fuchsia-500' : 'border-blue-500'}`
                           : isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
@@ -776,40 +777,75 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     </Button>
                   </div>
                 )}
-                {commandCenterTab === "products" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="size-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                      <ShoppingBag className="size-8 text-blue-500" />
+                {commandCenterTab === "productsServices" && (
+                  <div className="space-y-4">
+                    {/* Toggle switch between Products and Services */}
+                    <div className={`flex items-center p-1 rounded-xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                      <button
+                        onClick={() => setProductServiceView("products")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          productServiceView === "products"
+                            ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                            : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}
+                      >
+                        <ShoppingBag className="size-4" />
+                        Products
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white bg-blue-500">{isDemo ? 2 : 0}</span>
+                      </button>
+                      <button
+                        onClick={() => setProductServiceView("services")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          productServiceView === "services"
+                            ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                            : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}
+                      >
+                        <Shield className="size-4" />
+                        Services
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white bg-emerald-500">{isDemo ? 4 : 0}</span>
+                      </button>
                     </div>
-                    <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Product Referrals Yet</h3>
-                    <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Product referral opportunities from businesses will appear here once they join Bungee.
-                    </p>
-                    <Button 
-                      onClick={() => setShowBusinessLocator(true)}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white"
-                    >
-                      <Building2 className="size-4 mr-2" />
-                      Recruit Businesses
-                    </Button>
-                  </div>
-                )}
-                {commandCenterTab === "services" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="size-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                      <Shield className="size-8 text-emerald-500" />
-                    </div>
-                    <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Service Referrals Yet</h3>
-                    <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Service opportunities will appear here when businesses on Bungee need referrals for their services.
-                    </p>
-                    <Button 
-                      onClick={() => setShowBusinessLocator(true)}
-                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white"
-                    >
-                      <Building2 className="size-4 mr-2" />
-                      Recruit Businesses
-                    </Button>
+
+                    {/* Products view */}
+                    {productServiceView === "products" && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="size-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+                          <ShoppingBag className="size-8 text-blue-500" />
+                        </div>
+                        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Product Referrals Yet</h3>
+                        <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Product referral opportunities from businesses will appear here once they join Bungee.
+                        </p>
+                        <Button 
+                          onClick={() => setShowBusinessLocator(true)}
+                          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white"
+                        >
+                          <Building2 className="size-4 mr-2" />
+                          Recruit Businesses
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Services view */}
+                    {productServiceView === "services" && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="size-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                          <Shield className="size-8 text-emerald-500" />
+                        </div>
+                        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Service Referrals Yet</h3>
+                        <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Service opportunities will appear here when businesses on Bungee need referrals for their services.
+                        </p>
+                        <Button 
+                          onClick={() => setShowBusinessLocator(true)}
+                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white"
+                        >
+                          <Building2 className="size-4 mr-2" />
+                          Recruit Businesses
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
