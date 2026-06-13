@@ -19,6 +19,8 @@ interface UserProfile {
   is_demo: boolean
   tax_verified?: boolean
   referral_code?: string | null
+  avatar_url?: string | null
+  bungee_level?: number | null
 }
 
 export default function BungeeDashboardPage() {
@@ -74,7 +76,7 @@ export default function BungeeDashboardPage() {
           // Fetch user profile - explicitly select only columns that exist
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
-            .select('id, email, phone, first_name, last_name, business_name, user_type, tax_verified, referral_code')
+            .select('id, email, phone, first_name, last_name, business_name, user_type, tax_verified, referral_code, avatar_url, bungee_level')
             .eq('id', user.id)
             .single()
 
@@ -220,6 +222,7 @@ export default function BungeeDashboardPage() {
               currentMode="referrer"
               businessName={businessName || 'Your Business'}
               userName={userName || 'New User'}
+              avatarUrl={isDemo ? undefined : profile?.avatar_url || undefined}
             />
 
             {/* Additional Navigation Links */}
