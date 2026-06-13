@@ -21,7 +21,7 @@ import ProductsServicesWizard from "@/components/products-services-wizard"
 import BountyCreationPage from "@/components/bounty-creation-page"
 import BusinessVerificationModal from "@/components/business-verification-modal"
 import CandidateManagementWizard from "@/components/candidate-management-wizard"
-import JobOrderWizard from "@/components/job-order-wizard"
+import AiJobWizard from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
@@ -465,8 +465,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
           {activeTab === "hire" && (
             <div className="animate-in fade-in duration-300">
               {showJobOrderWizard ? (
-                /* Show Job Order Wizard directly */
-                <JobOrderWizard onClose={() => setShowJobOrderWizard(false)} />
+                /* Show conversational AI Job Wizard directly */
+                <AiJobWizard onClose={() => setShowJobOrderWizard(false)} />
               ) : (
                 /* Show hiring options */
                 <div className="space-y-6">
@@ -3954,7 +3954,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
             >
               <X className="size-5 text-gray-900 dark:text-white" />
             </button>
-            <JobOrderWizard onClose={() => setShowJobOrderWizard(false)} />
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl p-5 sm:p-6">
+              <AiJobWizard onClose={() => setShowJobOrderWizard(false)} />
+            </div>
           </div>
         </div>
       )}
