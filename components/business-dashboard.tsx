@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -229,6 +230,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
   const [showVeteranPool, setShowVeteranPool] = useState(false)
   const [showBungeePool, setShowBungeePool] = useState(false)
   const [showProRecruit, setShowProRecruit] = useState(false)
+  // Guard so body portals (which escape the hidden tab container) only run on the client.
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   const [showSelfHire, setShowSelfHire] = useState(false)
   const [showCandidateWizard, setShowCandidateWizard] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
@@ -3852,8 +3858,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         </div>
       )}
 
-      {/* Pro Recruit Modal */}
-      {showProRecruit && (
+      {/* Pro Recruit Modal — portaled to body so it escapes the hidden tab container */}
+      {showProRecruit && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowProRecruit(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3875,6 +3881,30 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Fill out a job order with the same AI wizard structure */}
+              <div className="p-4 rounded-lg bg-gray-900 dark:bg-gray-900 border border-gray-700">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-white flex items-center gap-2">
+                      <Sparkles className="size-4 text-[#FF8C00]" /> Create a Job Order
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Use the same guided wizard to scope the role. We&apos;ll hand it to a Pro-Bungee recruiter to
+                      source candidates.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setShowProRecruit(false)
+                      setShowJobOrderWizard(true)
+                    }}
+                    className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold shrink-0"
+                  >
+                    <Plus className="size-4 mr-1.5" /> Fill Out Job Order
+                  </Button>
+                </div>
+              </div>
+
               {/* Job orders routed here from the AI Job Wizard */}
               {proRecruiterOrders.length > 0 && (
                 <div className="p-4 rounded-lg bg-orange-50 dark:bg-[#FF8C00]/10 border border-[#FF8C00]/40">
@@ -3975,7 +4005,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Candidate Management Wizard Modal */}
