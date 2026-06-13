@@ -29,6 +29,7 @@ import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
 import BusinessAnalytics from "@/components/business-analytics"
 import { LeadValidationPanel } from "@/components/lead-validation-panel"
+import { TransactionSummary } from "@/components/transaction-summary"
 import { demoIncomingLeads, getReferrerFromName } from "@/lib/validation"
 import { ReferrerBadge } from "@/components/referrer-badge"
 import { BungeeCordIcon, CORD_COLORS } from "@/components/bungee-cord-icon"
@@ -957,6 +958,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
                 {/* Bungee Validation — owner controls for inbound referral quality */}
                 <LeadValidationPanel initialLeads={demoIncomingLeads} />
+
+                {/* Contingent payment breakdown — worker payment + 30% service fee */}
+                <TransactionSummary />
 
                 {/* Hiring Campaigns */}
                 <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">

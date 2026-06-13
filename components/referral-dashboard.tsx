@@ -103,6 +103,8 @@ import {
   type UserReferral,
 } from "@/lib/referrals"
 import { MyReferralsValidation } from "@/components/my-referrals-validation"
+import { ReferralEarnings } from "@/components/referral-earnings"
+import { demoReferredAccounts } from "@/lib/payments"
 import { VerifiedBungeeBadge } from "@/components/validation-badges"
 import { demoValidatedReferrals, computeQualityScore } from "@/lib/validation"
 
@@ -1003,6 +1005,23 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                       <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} group-hover:text-[#FF8C00] transition-colors`} />
                     </div>
                   </button>
+
+                  {/* Referral Earnings Card - 18-month tiered residual income */}
+                  <button
+                    onClick={() => setMainView("earn")}
+                    className={`w-full group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-[#FF8C00]' : 'bg-white border-gray-200 hover:border-[#FF8C00]'} hover:shadow-xl shadow-sm`}
+                  >
+                    <div className="flex items-center p-3 sm:p-4 gap-3 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#FF8C00]/10 shadow-lg border border-[#FF8C00]/30">
+                        <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-[#FF8C00]" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h3 className={`text-sm sm:text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Referral Earnings</h3>
+                        <p className={`text-[10px] sm:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recurring residual income tiered over 18 months</p>
+                      </div>
+                      <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} group-hover:text-[#FF8C00] transition-colors`} />
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -1391,45 +1410,17 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 <span className="text-sm">Back to Dashboard</span>
               </button>
 
-                            <div className={`rounded-2xl p-4 border border-fuchsia-700/30 ${isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
-                <h2 className={`text-xl font-bold flex items-center gap-2 mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  <DollarSign className="size-6 text-fuchsia-700" />
-                  Earnings
+                            <div className={`rounded-2xl p-4 border border-[#FF8C00]/30 ${isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
+                <h2 className={`text-xl font-bold flex items-center gap-2 mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <DollarSign className="size-6 text-[#FF8C00]" />
+                  Referral Earnings
                 </h2>
-                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Track your earnings and payment history</p>
+                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Your recurring residual income, tiered over 18 months per referred account.
+                </p>
 
-                {/* Earnings Summary */}
-                <div className="bg-gradient-to-br from-fuchsia-700/20 to-purple-500/20 rounded-xl p-4 mb-4 border border-fuchsia-700/30">
-                  <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Earned</p>
-                  <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>$0.00</p>
-                  <p className="text-xs text-fuchsia-700 mt-1">Start referring to earn!</p>
-                </div>
-
-                {/* Earnings Breakdown */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-emerald-700">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Jobs</p>
-                  </div>
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-blue-700">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Services</p>
-                  </div>
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-[#FF8C00]">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Products</p>
-                  </div>
-                </div>
-
-                {/* Payment History */}
-                <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <h3 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment History</h3>
-                  <div className="text-center py-6">
-                    <DollarSign className="size-8 text-gray-400 mx-auto mb-2" />
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>No payments yet</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-500'}`}>Earnings will appear here</p>
-                  </div>
-                </div>
+                {/* 18-month tiered residual engine */}
+                <ReferralEarnings accounts={isDemo ? demoReferredAccounts : []} isDarkMode={isDarkMode} />
               </div>
             </div>
           )}
