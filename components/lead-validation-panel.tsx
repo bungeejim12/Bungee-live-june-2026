@@ -9,6 +9,7 @@ import {
   statusClasses,
   formatDate,
 } from "@/lib/validation"
+import { ReferrerBadge } from "@/components/referrer-badge"
 
 interface LeadValidationPanelProps {
   initialLeads: ValidatedReferral[]
@@ -92,8 +93,15 @@ export function LeadValidationPanel({ initialLeads }: LeadValidationPanelProps) 
                   )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {lead.businessName} · Submitted {formatDate(lead.submittedAt)} · ${lead.estimatedValue}
+                  {lead.category} · Submitted {formatDate(lead.submittedAt)} · ${lead.estimatedValue}
                 </p>
+                {/* Referring Bungee — avatar + cord rank attached to this person */}
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#FF8C00]/5 border border-[#FF8C00]/15 px-2 py-1.5 w-fit max-w-full">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#FF8C00] shrink-0">
+                    Via Bungee
+                  </span>
+                  <ReferrerBadge referrer={lead.referrer} />
+                </div>
               </div>
 
               {/* Owner controls */}

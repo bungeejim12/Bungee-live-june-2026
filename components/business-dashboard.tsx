@@ -26,7 +26,9 @@ import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
 import BusinessAnalytics from "@/components/business-analytics"
 import { LeadValidationPanel } from "@/components/lead-validation-panel"
-import { demoIncomingLeads } from "@/lib/validation"
+import { demoIncomingLeads, getReferrerFromName } from "@/lib/validation"
+import { ReferrerBadge } from "@/components/referrer-badge"
+import { BungeeCordIcon, CORD_COLORS } from "@/components/bungee-cord-icon"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
@@ -986,6 +988,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{lead.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{lead.service} · {lead.company}</p>
+                          {/* Referring Bungee — avatar + cord rank */}
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-[#FF8C00] shrink-0">Via Bungee</span>
+                            <ReferrerBadge referrer={getReferrerFromName(lead.referredBy)} />
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="font-mono font-semibold text-xs text-emerald-600">{lead.bounty}</span>
@@ -1025,6 +1032,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{sale.name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{sale.item}</p>
+                          {/* Referring Bungee — avatar + cord rank */}
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-[#FF8C00] shrink-0">Via Bungee</span>
+                            <ReferrerBadge referrer={getReferrerFromName(sale.referredBy)} />
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="font-semibold text-xs text-gray-900 dark:text-white">{sale.amount}</span>
@@ -1628,6 +1640,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <span className="font-mono font-semibold text-[9px] sm:text-[11px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 px-1.5 rounded border border-emerald-200 dark:border-emerald-800">{lead.bounty}</span>
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-[9px] sm:text-xs truncate">{lead.company}</p>
+                          {(() => { const r = getReferrerFromName(lead.referredBy); return (
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <BungeeCordIcon color={CORD_COLORS[r.cord]} size={7} />
+                              <span className="text-[8px] sm:text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                {r.name} · <span className="font-semibold" style={{ color: CORD_COLORS[r.cord] }}>{r.rankName} Lvl {r.level}</span>
+                              </span>
+                            </div>
+                          )})()}
                           <div className="flex items-center justify-between pt-1.5">
                             <Badge className={`text-[8px] sm:text-[10px] font-medium border px-2 py-0.5 ${
                               lead.stage === 'New Referral' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 border-amber-200 dark:border-amber-800' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800'
@@ -1664,6 +1684,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <span className="text-[7px] sm:text-[9px] font-mono text-gray-500 bg-gray-100 dark:bg-gray-700 px-1 rounded border border-gray-200 dark:border-gray-600">{sale.trackingCode}</span>
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-[8px] sm:text-[11px] truncate">Item: {sale.item}</p>
+                          {(() => { const r = getReferrerFromName(sale.referredBy); return (
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <BungeeCordIcon color={CORD_COLORS[r.cord]} size={7} />
+                              <span className="text-[7px] sm:text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                {r.name} · <span className="font-semibold" style={{ color: CORD_COLORS[r.cord] }}>{r.rankName} Lvl {r.level}</span>
+                              </span>
+                            </div>
+                          )})()}
                           <div className="flex items-center justify-between pt-1">
                             <Badge className={`text-[7px] sm:text-[9px] font-medium border px-1.5 py-0 ${
                               sale.stage === 'Sale Confirmed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
@@ -2125,8 +2153,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{leadData.service}</p>
                           </div>
                           <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Referred By</p>
-                            <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{leadData.referredBy}</p>
+                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1.5">Referred By Bungee</p>
+                            <ReferrerBadge referrer={getReferrerFromName(leadData.referredBy)} />
                           </div>
                         </div>
 
@@ -2219,9 +2247,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Customer Phone</p>
                             <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{saleData.phone}</p>
                           </div>
-                          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Referred By</p>
-                            <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{saleData.referredBy}</p>
+                          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 col-span-2">
+                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1.5">Referred By Bungee</p>
+                            <ReferrerBadge referrer={getReferrerFromName(saleData.referredBy)} />
                           </div>
                           <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                             <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Status</p>
