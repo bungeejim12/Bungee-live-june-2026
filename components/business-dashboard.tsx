@@ -25,6 +25,8 @@ import CandidateManagementWizard from "@/components/candidate-management-wizard"
 import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
 import BusinessAnalytics from "@/components/business-analytics"
+import { LeadValidationPanel } from "@/components/lead-validation-panel"
+import { demoIncomingLeads } from "@/lib/validation"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
@@ -911,6 +913,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                     <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Confirmed Sales</p>
                   </div>
                 </div>
+
+                {/* Bungee Validation — owner controls for inbound referral quality */}
+                <LeadValidationPanel initialLeads={demoIncomingLeads} />
 
                 {/* Hiring Campaigns */}
                 <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">

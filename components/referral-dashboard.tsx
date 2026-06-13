@@ -96,6 +96,9 @@ import {
   type ReferralStats,
   type UserReferral,
 } from "@/lib/referrals"
+import { MyReferralsValidation } from "@/components/my-referrals-validation"
+import { VerifiedBungeeBadge } from "@/components/validation-badges"
+import { demoValidatedReferrals, computeQualityScore } from "@/lib/validation"
 
 // Achievements & Badges System — grouped by category.
 // Each badge is either unlocked, or shows progress toward its target.
@@ -286,6 +289,10 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   }, [isDemo, userProfile?.id])
 
   const userStats = isDemo ? demoStats : computeReferralStats(referralList)
+
+  // Quality Score / reputation derived from validated (conversion-based) referrals.
+  // Demo mode uses the seeded validation dataset.
+  const qualityScore = computeQualityScore(isDemo ? demoValidatedReferrals : [])
 
   const userName =
     user?.firstName ||
@@ -494,6 +501,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userName}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Level {userStats.level}</p>
                   </div>
+                  {qualityScore.isVerifiedBungee && <VerifiedBungeeBadge size="sm" />}
                   {/* Current Chord Badge */}
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30">
                     <BungeeCordIcon color={CORD_COLORS.green} size={14} />
@@ -1336,6 +1344,13 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </button>
                 </div>
               </div>
+
+              {/* Bungee Validation & Reputation - Quality Score, Trust Indicator, table */}
+              <MyReferralsValidation
+                referrals={demoValidatedReferrals}
+                isDarkMode={isDarkMode}
+                userName={userName}
+              />
             </div>
           )}
 
