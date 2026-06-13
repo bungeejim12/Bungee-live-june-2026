@@ -30,6 +30,8 @@ import {
   Wand2,
   Globe,
   ClipboardType,
+  Boxes,
+  Briefcase,
 } from "lucide-react"
 
 type OfferingType = "product" | "service"
@@ -239,59 +241,59 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
   // ---------- CHOOSER SCREEN ----------
   if (offeringType === null) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-950 dark:to-gray-900">
-        <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="min-h-screen w-full bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-950 dark:to-gray-900 font-sans">
+        <div className="max-w-3xl mx-auto px-6 py-10 sm:py-16">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-8"
+            className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors mb-12"
             aria-label="Back to dashboard"
           >
             <ArrowLeft className="size-5" />
             Back
           </button>
 
-          <div className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white text-balance">
-              What would you like to add?
+          <div className="text-center mb-12 sm:mb-16">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white text-balance">
+              Expand Your Bungee Offerings
             </h1>
-            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-2">
-              Choose what you want word-of-mouth Cords to refer for you.
+            <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 mt-4 max-w-xl mx-auto text-pretty leading-relaxed">
+              Select an offering type below to start generating high-quality referrals.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
             <button
               onClick={() => chooseType("product")}
-              className="group flex flex-col items-center text-center gap-4 p-8 rounded-3xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[#FF8C00] hover:shadow-lg transition-all"
+              className="group flex flex-col items-center text-center gap-6 p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
             >
-              <div className="size-16 rounded-2xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Package className="size-8 text-blue-600 dark:text-blue-400" />
+              <div className="size-20 rounded-2xl bg-[#FF8C00] flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-105 transition-transform">
+                <Boxes className="size-10 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Product</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  A physical or digital item from your catalog
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Product</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                  Upload physical or digital items from your catalog and set your commission.
                 </p>
               </div>
-              <span className="flex items-center gap-1 text-sm font-semibold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
                 Get started <ChevronRight className="size-4" />
               </span>
             </button>
 
             <button
               onClick={() => chooseType("service")}
-              className="group flex flex-col items-center text-center gap-4 p-8 rounded-3xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[#FF8C00] hover:shadow-lg transition-all"
+              className="group flex flex-col items-center text-center gap-6 p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md hover:shadow-2xl hover:border-[#FF8C00] hover:-translate-y-1 transition-all duration-200"
             >
-              <div className="size-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Wrench className="size-8 text-emerald-600 dark:text-emerald-400" />
+              <div className="size-20 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform">
+                <Briefcase className="size-10 text-white" strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">Service</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Work you perform, like installs, consulting, or repairs
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Service</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+                  Define your specialized services and empower Bungees to secure your next client.
                 </p>
               </div>
-              <span className="flex items-center gap-1 text-sm font-semibold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="flex items-center gap-1 text-sm font-bold text-[#FF8C00] opacity-0 group-hover:opacity-100 transition-opacity">
                 Get started <ChevronRight className="size-4" />
               </span>
             </button>
