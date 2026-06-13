@@ -477,15 +477,15 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Pricing Model</Label>
                   <Select value={pricingModel} onValueChange={setPricingModel}>
-                    <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                      <SelectValue placeholder="Select model" />
+              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-slate-900 dark:text-white">
+                <SelectValue placeholder="Select model" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {PRICING_MODELS.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
+              <SelectContent className="bg-white dark:bg-gray-800 text-slate-900 dark:text-white">
+                {PRICING_MODELS.map((m) => (
+                  <SelectItem key={m} value={m} className="text-slate-900 dark:text-white">
+                    {m}
+                  </SelectItem>
+                ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -502,7 +502,7 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   placeholder="Brief 2-sentence elevator pitch for Cords to use..."
-                  className="min-h-[80px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                  className="min-h-[80px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
               </div>
 
@@ -512,7 +512,7 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
                   value={deepDive}
                   onChange={(e) => setDeepDive(e.target.value)}
                   placeholder="Provide exhaustive technical specs, scope of work, service inclusions, warranties, and exact service boundaries / delivery timelines."
-                  className="min-h-[140px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                  className="min-h-[140px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
               </div>
 
@@ -691,15 +691,15 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Payout Trigger</Label>
                 <Select value={payoutTrigger} onValueChange={setPayoutTrigger}>
-                  <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
-                    <SelectValue placeholder="When is the bounty earned?" />
+              <SelectTrigger className="bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-slate-900 dark:text-white">
+                <SelectValue placeholder="When is the bounty earned?" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {PAYOUT_TRIGGERS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
+              <SelectContent className="bg-white dark:bg-gray-800 text-slate-900 dark:text-white">
+                {PAYOUT_TRIGGERS.map((t) => (
+                  <SelectItem key={t} value={t} className="text-slate-900 dark:text-white">
+                    {t}
+                  </SelectItem>
+                ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -820,7 +820,7 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
                   value={aiText}
                   onChange={(e) => setAiText(e.target.value)}
                   placeholder="Paste a description, brochure text, or a few notes about what you offer..."
-                  className="min-h-[120px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                  className="min-h-[120px] resize-none bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-slate-900 dark:text-white placeholder:text-slate-400"
                   disabled={aiLoading}
                 />
               </div>
