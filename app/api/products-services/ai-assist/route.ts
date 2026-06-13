@@ -19,6 +19,42 @@ function htmlToText(html: string): string {
     .slice(0, 12000)
 }
 
+// Pull candidate product/service images straight from the page markup so the
+// AI assistant can equip the listing with visuals in one shot.
+function extractImages(html: string, base: URL): string[] {
+  const urls = new Set<string>()
+
+  // Prefer Open Graph / Twitter hero images first.
+  const metaRegex = /<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*>/gi
+  for (const tag of html.match(metaRegex) ?? []) {
+    const content = tag.match(/content=["']([^"']+)["']/i)?.[1]
+    if (content) {
+      try {
+        urls.add(new URL(content, base).href)
+      } catch {
+        /* skip invalid */
+      }
+    }
+  }
+
+  // Then collect <img> sources (src, data-src, srcset).
+  const imgRegex = /<img[^>]+>/gi
+  for (const tag of html.match(imgRegex) ?? []) {
+    const src =
+      tag.match(/\bsrc=["']([^"']+)["']/i)?.[1] ??
+      tag.match(/\bdata-src=["']([^"']+)["']/i)?.[1] ??
+      tag.match(/\bsrcset=["']([^"', ]+)/i)?.[1]
+    if (!src || src.startsWith("data:")) continue
+    try {
+      urls.add(new URL(src, base).href)
+    } catch {
+      /* skip invalid */
+    }
+  }
+
+  return [...urls].filter((u) => !/sprite|pixel|spacer|1x1|favicon|logo-?icon/i.test(u)).slice(0, 12)
+}
+
 const ExtractionSchema = z.object({
   name: z.string().describe("A concise, marketable name for the primary product or service offered."),
   summary: z.string().describe("A punchy 1-2 sentence elevator pitch a referrer could say out loud."),
@@ -40,6 +76,7 @@ export async function POST(req: Request) {
 
     let sourceContent = ""
     let sourceLabel = ""
+    let images: string[] = []
 
     if (url && typeof url === "string") {
       // Normalize URL
@@ -64,6 +101,11 @@ export async function POST(req: Request) {
         const html = await res.text()
         sourceContent = htmlToText(html)
         sourceLabel = `the website ${target}`
+        try {
+          images = extractImages(html, new URL(target))
+        } catch {
+          images = []
+        }
       } catch (err) {
         console.log("[v0] AI assist scrape error:", err)
         return Response.json(
@@ -99,7 +141,7 @@ export async function POST(req: Request) {
         `for one primary offering.\n\n--- CONTENT START ---\n${sourceContent}\n--- CONTENT END ---`,
     })
 
-    return Response.json({ data: experimental_output })
+    return Response.json({ data: experimental_output, images })
   } catch (err) {
     console.log("[v0] AI assist error:", err)
     return Response.json({ error: "The AI assistant ran into a problem. Please try again." }, { status: 500 })

@@ -167,6 +167,44 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
 
   const removeMedia = (url: string) => setMediaUrls((prev) => prev.filter((u) => u !== url))
 
+  // Step 3: pull images straight off a website without leaving the page.
+  const [pullUrl, setPullUrl] = useState("")
+  const [isPullingImages, setIsPullingImages] = useState(false)
+
+  const handlePullFromWebsite = async () => {
+    const target = (pullUrl || aiUrl).trim()
+    if (!target) {
+      setUploadError("Enter your website URL to pull images from.")
+      return
+    }
+    setUploadError("")
+    setIsPullingImages(true)
+    try {
+      const res = await fetch("/api/bounties/scrape-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ websiteUrl: target }),
+      })
+      const result = await res.json()
+      if (!res.ok || (result.error && (!result.images || result.images.length === 0))) {
+        setUploadError(result.error || "Couldn't pull images from that website.")
+        return
+      }
+      setMediaUrls((prev) => {
+        const merged = [...prev]
+        for (const img of (result.images as string[]) ?? []) {
+          if (!merged.includes(img)) merged.push(img)
+        }
+        return merged
+      })
+    } catch (err) {
+      console.log("[v0] Pull images error:", err)
+      setUploadError("Couldn't pull images from that website.")
+    } finally {
+      setIsPullingImages(false)
+    }
+  }
+
   // AI Assistant: scrape a URL or analyze pasted text, then auto-fill the form.
   const runAiAssist = async () => {
     setAiError("")
@@ -202,12 +240,23 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
         setAudienceTags(Array.from(new Set(d.audienceTags.map((t: string) => t.trim()).filter(Boolean))))
       }
       if (d.customerIncentive) setCustomerIncentive(d.customerIncentive)
+      // Pull any product images the assistant found on the website into the
+      // asset gallery so they're ready on "The Hook & Assets" step.
+      if (Array.isArray(result.images) && result.images.length > 0) {
+        setMediaUrls((prev) => {
+          const merged = [...prev]
+          for (const img of result.images as string[]) {
+            if (!merged.includes(img)) merged.push(img)
+          }
+          return merged
+        })
+      }
       setAiSuccess(true)
-      // Briefly show success, then close and jump to step 1 so they can review.
+      // Briefly show success, then close the assistant — but keep the user on
+      // their current step instead of bouncing them back to step 1.
       setTimeout(() => {
         setAiOpen(false)
         setAiSuccess(false)
-        setStep(1)
       }, 1100)
     } catch (err) {
       console.log("[v0] AI assist client error:", err)
@@ -631,6 +680,43 @@ export default function ProductsServicesWizard({ onClose }: ProductsServicesWiza
                   onChange={handleMediaUpload}
                   className="hidden"
                 />
+
+                {/* Or pull images straight from a website */}
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs text-gray-400">or pull from your website</span>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                    <Input
+                      value={pullUrl}
+                      onChange={(e) => setPullUrl(e.target.value)}
+                      placeholder="https://yourstore.com/product"
+                      className="pl-8 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handlePullFromWebsite}
+                    disabled={isPullingImages}
+                    className="bg-[#FF8C00] hover:bg-[#E67E00] text-white shrink-0"
+                  >
+                    {isPullingImages ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin mr-1.5" />
+                        Pulling...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="size-4 mr-1.5" />
+                        Pull Images
+                      </>
+                    )}
+                  </Button>
+                </div>
+
                 {uploadError && (
                   <p className="text-xs text-red-600 flex items-center gap-1">
                     <AlertCircle className="size-3" />
