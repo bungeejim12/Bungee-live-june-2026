@@ -24,6 +24,7 @@ import BusinessVerificationModal from "@/components/business-verification-modal"
 import CandidateManagementWizard from "@/components/candidate-management-wizard"
 import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
+import BusinessAnalytics from "@/components/business-analytics"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
@@ -137,6 +138,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [uploadedLogo, setUploadedLogo] = useState<string | null>(null)
   const [showWalletModal, setShowWalletModal] = useState(false)
+  // Payout method preferences shown in the Wallet
+  const [cryptoPayoutEnabled, setCryptoPayoutEnabled] = useState(false)
+  const [cashPayoutEnabled, setCashPayoutEnabled] = useState(true)
 
   // Toggle candidate expansion
   const toggleCandidate = (candidateId: string) => {
@@ -241,7 +245,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
     { id: 2, type: "order", message: "New order received", time: "5 min ago", unread: true },
     { id: 3, type: "bounty", message: "Bounty payment processed", time: "1 hour ago", unread: false },
   ] : [])
-  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | "campaigns" | null>(null)
+  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | "campaigns" | "analytics" | null>(null)
   const [showBungeeBlast, setShowBungeeBlast] = useState(false)
   const [showVeteranPool, setShowVeteranPool] = useState(false)
   const [showBungeePool, setShowBungeePool] = useState(false)
@@ -442,6 +446,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         activeTab === "orders" ? "bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30" :
         activeTab === "bounties" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
         activeTab === "campaigns" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
+        activeTab === "analytics" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
         "bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30"
       }`}>
         {/* Header - Clean White Minimalist */}
@@ -464,6 +469,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "orders" && "Orders"}
                   {activeTab === "bounties" && "Active Campaigns"}
                   {activeTab === "campaigns" && "Campaigns"}
+                  {activeTab === "analytics" && "Analytics"}
                   {activeTab === "invoices" && "Invoices"}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -475,6 +481,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "orders" && "Track customer orders"}
                   {activeTab === "bounties" && "Your active referral campaigns"}
                   {activeTab === "campaigns" && "All your referral activity in one place"}
+                  {activeTab === "analytics" && "Track your referral performance"}
                   {activeTab === "invoices" && "Payment history"}
                 </p>
               </div>
@@ -870,6 +877,11 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                 <Button className="mt-6 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white">Add Products to Sell</Button>
               </div>
             </div>
+          )}
+
+          {/* Analytics Tab Full Page */}
+          {activeTab === "analytics" && (
+            <BusinessAnalytics isDemo={isDemo} />
           )}
 
           {/* Campaigns Tab Full Page - aggregated referral activity */}
@@ -4378,8 +4390,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         </div>
       )}
 
-      {/* Wallet/Escrow Modal */}
-      {showWalletModal && (
+      {/* Wallet/Escrow Modal — portaled to body so it escapes the hidden tab container */}
+      {showWalletModal && isMounted && createPortal(
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
           <div className="bg-white dark:bg-gray-900 w-full sm:w-[420px] sm:max-w-[90vw] max-h-[85vh] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl">
             {/* Header */}
@@ -4429,6 +4441,39 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                 </button>
               </div>
               
+              {/* Payout Methods */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Payout Methods</p>
+                <div className="space-y-2">
+                  {/* Cash / Bank */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="size-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
+                      <Banknote className="size-[18px] text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Cash / Bank Transfer</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {cashPayoutEnabled ? "Direct deposit to •••• 4291" : "Disabled"}
+                      </p>
+                    </div>
+                    <Switch checked={cashPayoutEnabled} onCheckedChange={setCashPayoutEnabled} />
+                  </div>
+                  {/* Crypto */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="size-9 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
+                      <Bitcoin className="size-[18px] text-[#FF8C00]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Crypto (Bitcoin)</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {cryptoPayoutEnabled ? "Payouts in BTC at market rate" : "Disabled"}
+                      </p>
+                    </div>
+                    <Switch checked={cryptoPayoutEnabled} onCheckedChange={setCryptoPayoutEnabled} />
+                  </div>
+                </div>
+              </div>
+
               {/* Recent Transactions */}
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Recent Transactions</p>
@@ -4452,7 +4497,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Merchant Bottom Navigation Bar */}
@@ -4475,17 +4521,17 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
           {/* Analytics */}
           <button 
-            onClick={() => setActiveTab('marketplace')}
+            onClick={() => setActiveTab('analytics')}
             className="flex flex-col items-center gap-1 group"
           >
             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${
-              activeTab === 'marketplace'
+              activeTab === 'analytics'
                 ? 'bg-[#FF8C00]/10 border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20' 
                 : 'bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700'
             }`}>
-              <BarChart3 className={`w-5 h-5 ${activeTab === 'marketplace' ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
+              <BarChart3 className={`w-5 h-5 ${activeTab === 'analytics' ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
             </div>
-            <span className={`text-xs font-semibold ${activeTab === 'marketplace' ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Analytics</span>
+            <span className={`text-xs font-semibold ${activeTab === 'analytics' ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Analytics</span>
           </button>
 
           {/* Wallet/Escrow */}
