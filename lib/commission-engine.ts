@@ -247,8 +247,25 @@ export async function recordCommissionForTransaction(
     }
   }
 
+  // If Stripe isn't configured yet, the commission is still recorded and held
+  // as pending so it can be paid out once keys/Connect accounts are in place.
+  if (!isStripeConfigured()) {
+    await supabase
+      .from("commission_ledger")
+      .update({ notes: "stripe_not_configured" })
+      .eq("id", entry.id)
+    return {
+      recorded: true,
+      ledgerId: entry.id,
+      status: "pending",
+      commissionApplied: calc.commissionApplied,
+      reason: "stripe_not_configured",
+      calculation: calc,
+    }
+  }
+
   try {
-    const transfer = await stripe.transfers.create({
+    const transfer = await getStripe().transfers.create({
       amount: toCents(calc.commissionApplied),
       currency: "usd",
       destination,
@@ -318,9 +335,9 @@ export async function clawbackTransaction(transactionId: string): Promise<Clawba
     let transferReversed = false
 
     // Reverse the Stripe transfer if funds already moved.
-    if (entry.status === "paid" && entry.stripe_transfer_id) {
+    if (entry.status === "paid" && entry.stripe_transfer_id && isStripeConfigured()) {
       try {
-        await stripe.transfers.createReversal(entry.stripe_transfer_id, {
+        await getStripe().transfers.createReversal(entry.stripe_transfer_id, {
           amount: amountCents,
           metadata: { reason: "transaction_refunded", transaction_id: transactionId },
         })

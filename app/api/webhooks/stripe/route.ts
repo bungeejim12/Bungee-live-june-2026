@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
-import { stripe } from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 import { clawbackTransaction } from "@/lib/commission-engine"
 
 // Stripe sends raw bytes; we must read the body as text for signature checks.
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event
   try {
     if (webhookSecret && signature) {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
     } else {
       // No secret configured yet (sandbox): parse without verification but warn.
       console.warn("[v0] STRIPE_WEBHOOK_SECRET not set — processing webhook without signature verification")
