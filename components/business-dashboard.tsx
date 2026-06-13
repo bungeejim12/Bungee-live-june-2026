@@ -594,8 +594,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             />
                           </div>
                           <div className="text-left">
-                            <h4 className="font-bold text-gray-900 dark:text-white text-lg">General Talent Pool</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Access Bungee&apos;s referral network</p>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-lg">Bungee Pool</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Silver &amp; Gold medalists from passed searches</p>
                             <Badge className="mt-1 bg-amber-50 text-gray-800 border-2 border-[#FF8C00] text-xs font-semibold shadow-sm">Network Verified</Badge>
                           </div>
                         </div>
@@ -3809,8 +3809,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">General Talent Pool</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Silver & Bronze medalists from past hiring blasts</p>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Bungee Pool</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Silver &amp; Gold medalists from passed searches</p>
                 </div>
               </div>
             </div>
@@ -3822,25 +3822,25 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               <div className="flex gap-2 mb-4">
                 <Badge className="bg-gray-900 text-white border-gray-900 cursor-pointer">All</Badge>
                 <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Silver Medalists</Badge>
-                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Bronze Medalists</Badge>
+                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Gold Medalists</Badge>
               </div>
               <div className="space-y-3">
                 {[
-                  { name: "Sarah M.", role: "Full Stack Developer", company: "TechCorp", match: 94, medal: "silver", skills: "React, Node.js, AWS" },
+                  { name: "Sarah M.", role: "Full Stack Developer", company: "TechCorp", match: 94, medal: "gold", skills: "React, Node.js, AWS" },
                   { name: "James K.", role: "Sales Manager", company: "SalesForce Inc", match: 91, medal: "silver", skills: "B2B Sales, CRM, Team Leadership" },
-                  { name: "Maria L.", role: "Marketing Director", company: "AdVenture Co", match: 87, medal: "bronze", skills: "Digital Marketing, SEO, Analytics" },
+                  { name: "Maria L.", role: "Marketing Director", company: "AdVenture Co", match: 87, medal: "gold", skills: "Digital Marketing, SEO, Analytics" },
                   { name: "Tom W.", role: "Project Manager", company: "BuildIt LLC", match: 89, medal: "silver", skills: "Agile, Scrum, JIRA" },
-                  { name: "Lisa R.", role: "UX Designer", company: "DesignHub", match: 85, medal: "bronze", skills: "Figma, User Research, Prototyping" },
+                  { name: "Lisa R.", role: "UX Designer", company: "DesignHub", match: 85, medal: "gold", skills: "Figma, User Research, Prototyping" },
                 ].map((candidate, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-400 hover:shadow-md transition-all">
-                    <div className={`size-12 rounded-full flex items-center justify-center text-white font-bold ${candidate.medal === "silver" ? "bg-gray-400" : "bg-gray-600"}`}>
-                      {candidate.medal === "silver" ? "2" : "3"}
+                    <div className={`size-12 rounded-full flex items-center justify-center text-white font-bold ${candidate.medal === "gold" ? "bg-[#FF8C00]" : "bg-gray-400"}`}>
+                      {candidate.medal === "gold" ? "1" : "2"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-900 dark:text-white">{candidate.name}</p>
-                        <Badge className={`text-xs font-medium ${candidate.medal === "silver" ? "bg-gray-200 text-gray-700 dark:text-gray-300 border-gray-300" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-300"}`}>
-                          {candidate.medal === "silver" ? "Silver" : "Bronze"}
+                        <Badge className={`text-xs font-medium ${candidate.medal === "gold" ? "bg-amber-50 text-gray-800 border-[#FF8C00]" : "bg-gray-200 text-gray-700 dark:text-gray-300 border-gray-300"}`}>
+                          {candidate.medal === "gold" ? "Gold" : "Silver"}
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">{candidate.role}</p>
