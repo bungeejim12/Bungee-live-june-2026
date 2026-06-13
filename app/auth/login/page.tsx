@@ -562,8 +562,8 @@ function LoginContent() {
                 </div>
                 <div className="flex items-center gap-3 p-4">
                   <div>
-                    <h3 className="text-lg font-bold text-blue-700">Business Dashboard</h3>
-                    <p className="text-sm text-gray-600">I own a business &amp; want to hire or sell</p>
+                  <h3 className="text-lg font-bold text-blue-700">Business Dashboard</h3>
+                  <p className="text-sm text-gray-600">Post jobs and hire</p>
                   </div>
                   <ArrowRight className="h-5 w-5 ml-auto text-blue-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" />
                 </div>
@@ -592,8 +592,8 @@ function LoginContent() {
                 </div>
                 <div className="flex items-center gap-3 p-4">
                   <div>
-                    <h3 className="text-lg font-bold text-[#E67E00]">Bungee Dashboard</h3>
-                    <p className="text-sm text-gray-600">I&apos;m a worker who refers &amp; earns</p>
+                  <h3 className="text-lg font-bold text-[#E67E00]">Bungee Dashboard</h3>
+                  <p className="text-sm text-gray-600">Refer and earn</p>
                   </div>
                   <ArrowRight className="h-5 w-5 ml-auto text-orange-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#FF8C00]" />
                 </div>
