@@ -57,6 +57,7 @@ import {
   Camera,
   Upload,
   Sparkles,
+  Loader2,
   MapPin,
   Tag,
   Image,
@@ -419,8 +420,35 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
     address: "",
     phone: "",
     website: "",
-    email: ""
+    email: "",
+    bio: ""
   })
+  // AI auto-fill state for the settings modal
+  const [isAutoFilling, setIsAutoFilling] = useState(false)
+  const handleAutoFill = () => {
+    if (!businessInfo.website.trim() || isAutoFilling) return
+    setIsAutoFilling(true)
+    // Simulated AI lookup based on the provided URL.
+    setTimeout(() => {
+      let host = businessInfo.website.trim()
+      try {
+        host = new URL(host.startsWith("http") ? host : `https://${host}`).hostname.replace(/^www\./, "")
+      } catch {
+        host = host.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
+      }
+      const brand = (host.split(".")[0] || "Your Business")
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+      setBusinessInfo((prev) => ({
+        ...prev,
+        name: brand,
+        address: "500 Market Street, San Francisco, CA 94105",
+        phone: "(415) 555-0182",
+        bio: prev.bio || `${brand} delivers trusted, high-quality offerings to its local community. Bungees can confidently refer ${brand} to customers looking for reliable service and great value.`,
+      }))
+      setIsAutoFilling(false)
+    }, 1600)
+  }
   // Empty state for new users
   const [referralActivity, setReferralActivity] = useState<any[]>([])
 
@@ -3738,111 +3766,147 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
-          <div className="relative w-full max-w-lg bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col font-sans" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-4 sm:p-6 bg-gradient-to-r from-gray-700/50 to-gray-50/50 border-b border-gray-200 dark:border-gray-700">
-              <button onClick={() => setShowSettings(false)} className="absolute top-3 right-3 p-2 rounded-full bg-gray-100 dark:bg-gray-700/90 hover:bg-red-500 transition-colors z-10 border border-gray-200 dark:border-gray-700">
-                <X className="size-5 text-gray-900 dark:text-white" />
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-gray-100 dark:border-gray-800">
+              <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10">
+                <X className="size-5 text-gray-700 dark:text-gray-300" />
               </button>
-              <div className="flex items-center gap-3">
-                <div className="size-12 rounded-xl bg-[#FF8C00]/20 flex items-center justify-center">
-                  <Settings className="size-6 text-[#FF8C00]" />
+              <div className="flex items-center gap-3.5">
+                <div className="size-12 rounded-2xl bg-[#FF8C00] flex items-center justify-center shadow-lg shadow-orange-500/30">
+                  <Settings className="size-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Business Settings</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage your business profile</p>
+                  <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Business Settings</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Manage your business profile</p>
                 </div>
               </div>
             </div>
             
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <div className="flex gap-2 px-6 sm:px-8 pt-4 pb-1">
               <button 
                 onClick={() => setSettingsTab("business")}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${settingsTab === "business" ? "text-[#FF8C00] border-b-2 border-[#FF8C00]" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white"}`}
+                className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all ${settingsTab === "business" ? "bg-[#FF8C00] text-white shadow-md shadow-orange-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
               >
                 Business Info
               </button>
               <button 
                 onClick={() => setSettingsTab("legal")}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${settingsTab === "legal" ? "text-[#FF8C00] border-b-2 border-[#FF8C00]" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white"}`}
+                className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all ${settingsTab === "legal" ? "bg-[#FF8C00] text-white shadow-md shadow-orange-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
               >
                 Legal & Contracts
               </button>
             </div>
             
             {/* Content */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+            <div className="px-6 py-5 sm:px-8 sm:py-6 overflow-y-auto flex-1">
               {settingsTab === "business" && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* Business Logo */}
                   <div className="flex items-center gap-4">
-                    <div className="size-16 rounded-xl bg-[#FF8C00]/20 flex items-center justify-center border-2 border-dashed border-[#FF8C00]/50">
+                    <div className="size-16 rounded-2xl bg-[#FF8C00]/10 flex items-center justify-center border-2 border-dashed border-[#FF8C00]/40">
                       <Building2 className="size-8 text-[#FF8C00]" />
                     </div>
                     <div>
-                      <Button size="sm" className="bg-[#FF8C00] hover:bg-[#E67E00] text-gray-900 dark:text-white">
+                      <Button size="sm" className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold">
+                        <Upload className="size-4 mr-2" />
                         Upload Logo
                       </Button>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">PNG or JPG, max 2MB</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">PNG or JPG, max 2MB</p>
                     </div>
                   </div>
-                  
+
+                  {/* Website + AI Auto-fill */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Website</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        value={businessInfo.website} 
+                        onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})} 
+                        className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white flex-1" 
+                        placeholder="https://yourwebsite.com" 
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleAutoFill}
+                        disabled={!businessInfo.website.trim() || isAutoFilling}
+                        className="shrink-0 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold disabled:opacity-50"
+                      >
+                        {isAutoFilling ? (
+                          <>
+                            <Loader2 className="size-4 mr-1.5 animate-spin" />
+                            Filling...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-4 mr-1.5" />
+                            Auto-fill
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                      Enter your URL and let AI fill in your business details.
+                    </p>
+                  </div>
+
                   {/* Business Name */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Business Name</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Name</label>
                     <Input 
                       value={businessInfo.name} 
                       onChange={(e) => setBusinessInfo({...businessInfo, name: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="Enter business name" 
                     />
                   </div>
                   
                   {/* Address */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Business Address</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Address</label>
                     <Input 
                       value={businessInfo.address} 
                       onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="123 Main St, City, State" 
                     />
                   </div>
                   
                   {/* Phone */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Phone Number</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Phone Number</label>
                     <Input 
                       value={businessInfo.phone} 
                       onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="(555) 123-4567" 
                     />
                   </div>
-                  
-                  {/* Website */}
+
+                  {/* Business Bio */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Website</label>
-                    <Input 
-                      value={businessInfo.website} 
-                      onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
-                      placeholder="https://yourwebsite.com" 
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Bio</label>
+                    <textarea
+                      value={businessInfo.bio}
+                      onChange={(e) => setBusinessInfo({...businessInfo, bio: e.target.value})}
+                      rows={3}
+                      className="w-full rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#FF8C00]/40 focus:border-[#FF8C00]"
+                      placeholder="Describe your business so Bungees can talk about it accurately to customers."
                     />
                   </div>
                   
                   {/* Industry */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Industry</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Industry</label>
                     <Input 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="e.g., Technology, Healthcare, Retail" 
                     />
                   </div>
                   
                   {/* Save Button */}
-                  <Button className="w-full bg-emerald-700 hover:bg-green-600 text-gray-900 dark:text-white mt-4">
+                  <Button className="w-full bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold mt-2">
                     <Save className="size-4 mr-2" />
                     Save Changes
                   </Button>
