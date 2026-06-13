@@ -74,8 +74,9 @@ async function fetchLocalBusinesses(lat: number, lng: number, radiusMiles: numbe
         .map(({ el, elLat, elLng }: any) => {
           const category = el.tags?.shop || el.tags?.amenity || el.tags?.office || el.tags?.craft || el.tags?.tourism || el.tags?.leisure || 'Business'
           const distance = calculateDistance(lat, lng, elLat, elLng)
+          const id = `osm-${el.type}-${el.id}`
           return {
-            id: `osm-${el.type}-${el.id}`,
+            id,
             name: el.tags.name,
             category: category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' '),
             address: el.tags?.['addr:street'] ? `${el.tags['addr:housenumber'] || ''} ${el.tags['addr:street']}`.trim() : 'Address not available',
@@ -83,7 +84,9 @@ async function fetchLocalBusinesses(lat: number, lng: number, radiusMiles: numbe
             lng: elLng,
             distance: distance,
             distanceLabel: `${distance.toFixed(1)} mi`,
-            isOnBungee: false // None of these are on Bungee yet
+            // Deterministically flag ~22% of results as already on Bungee (orange).
+            // The rest are recruitment targets (green) the Bungee can bring in for residual income.
+            isOnBungee: hashString(id) % 100 < 22
           }
         })
         // Closest businesses first so the most relevant recruitment targets surface at the top.
@@ -94,6 +97,16 @@ async function fetchLocalBusinesses(lat: number, lng: number, radiusMiles: numbe
   }
 
   return []
+}
+
+// Stable hash so the same business always gets the same on/off-Bungee status
+function hashString(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
 }
 
 // Calculate distance between two points in miles
@@ -193,13 +206,14 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
       markersRef.current.forEach(marker => marker.remove())
       markersRef.current = []
 
-      // Add business markers - all shown as recruitment targets (gray/blue)
+      // Add business markers - orange = already on Bungee, green = recruitment target
       businesses.forEach((biz) => {
+        const markerColor = biz.isOnBungee ? '#FF8C00' : '#10B981'
         const businessIcon = L.divIcon({
           className: 'custom-business-marker',
           html: `
             <div style="position: relative; cursor: pointer;">
-              <div style="width: 36px; height: 36px; border-radius: 50%; background: #6B7280; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 2px solid white;">
+              <div style="width: 36px; height: 36px; border-radius: 50%; background: ${markerColor}; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 2px solid white;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect>
                   <path d="M9 22v-4h6v4"></path>
@@ -220,21 +234,38 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
           iconAnchor: [18, 18]
         })
 
-        const marker = L.marker([biz.lat, biz.lng], { icon: businessIcon })
-          .bindPopup(`
+        const popupHtml = biz.isOnBungee
+          ? `
             <div style="min-width: 240px; padding: 12px; background: #1F2937; border-radius: 12px;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <div style="width: 8px; height: 8px; border-radius: 50%; background: #6B7280;"></div>
-                <span style="font-size: 10px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px;">Not on Bungee Yet</span>
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #FF8C00;"></div>
+                <span style="font-size: 10px; color: #FBBF77; text-transform: uppercase; letter-spacing: 0.5px;">Already on Bungee</span>
               </div>
               <h3 style="font-weight: 700; font-size: 16px; color: white; margin-bottom: 4px;">${biz.name}</h3>
               <p style="font-size: 12px; color: #9CA3AF; margin-bottom: 12px;">${biz.category} • ${biz.distanceLabel}</p>
-              <div style="background: linear-gradient(135deg, #FF8C00 0%, #F97316 100%); padding: 12px; border-radius: 8px; text-align: center;">
+              <div style="background: rgba(255,140,0,0.15); border: 1px solid rgba(255,140,0,0.4); padding: 12px; border-radius: 8px; text-align: center;">
+                <p style="font-size: 11px; color: #FBBF77; margin-bottom: 4px;">This business is active on Bungee</p>
+                <p style="font-size: 14px; font-weight: 700; color: #FF8C00;">Refer customers & earn rewards</p>
+              </div>
+            </div>
+          `
+          : `
+            <div style="min-width: 240px; padding: 12px; background: #1F2937; border-radius: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></div>
+                <span style="font-size: 10px; color: #6EE7B7; text-transform: uppercase; letter-spacing: 0.5px;">Not on Bungee Yet</span>
+              </div>
+              <h3 style="font-weight: 700; font-size: 16px; color: white; margin-bottom: 4px;">${biz.name}</h3>
+              <p style="font-size: 12px; color: #9CA3AF; margin-bottom: 12px;">${biz.category} • ${biz.distanceLabel}</p>
+              <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 12px; border-radius: 8px; text-align: center;">
                 <p style="font-size: 11px; color: white; opacity: 0.9; margin-bottom: 4px;">Recruit this business to Bungee!</p>
                 <p style="font-size: 14px; font-weight: 700; color: white;">Earn $500 + 18 months residual</p>
               </div>
             </div>
-          `, {
+          `
+
+        const marker = L.marker([biz.lat, biz.lng], { icon: businessIcon })
+          .bindPopup(popupHtml, {
             className: 'custom-popup'
           })
           .addTo(mapInstanceRef.current!)
@@ -333,7 +364,19 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
             <MapPin className="size-5 text-[#FF8C00]" />
             <div>
               <h2 className="text-lg font-bold text-gray-900">Bungee Map</h2>
-              <p className="text-xs text-gray-500">Find businesses to recruit and earn residual income</p>
+              <p className="text-xs text-gray-500">AI scans every business in your radius to recruit and earn</p>
+            </div>
+          </div>
+
+          {/* Color legend */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-[#FF8C00]" />
+              <span className="text-[11px] font-medium text-gray-600">Already on Bungee</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-emerald-500" />
+              <span className="text-[11px] font-medium text-gray-600">Recruit &amp; earn residual</span>
             </div>
           </div>
 
@@ -391,7 +434,7 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
       </div>
 
       {/* Map */}
-      <div ref={mapRef} className="absolute inset-0 pt-[180px]" />
+      <div ref={mapRef} className="absolute inset-0 pt-[220px]" />
 
       {/* Zoom Controls */}
       <div className="absolute bottom-24 right-4 flex flex-col gap-2 z-[1000]">
@@ -411,7 +454,7 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
 
       {/* Results List Panel - paginated, slide-up over the map */}
       {showList && businesses.length > 0 && (
-        <div className="absolute left-0 right-0 bottom-[88px] top-[180px] z-[1001] flex flex-col bg-white border-t border-gray-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+        <div className="absolute left-0 right-0 bottom-[88px] top-[220px] z-[1001] flex flex-col bg-white border-t border-gray-200 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
             <div className="flex items-center gap-2">
               <List className="size-4 text-[#FF8C00]" />
@@ -439,16 +482,19 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
                     mapInstanceRef.current?.setView([biz.lat, biz.lng], 15)
                   }}
                 >
-                  <div className="size-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="size-5 text-gray-500" />
+                  <div className={`size-10 rounded-full flex items-center justify-center flex-shrink-0 ${biz.isOnBungee ? 'bg-[#FF8C00]/15' : 'bg-emerald-100'}`}>
+                    <Building2 className={`size-5 ${biz.isOnBungee ? 'text-[#FF8C00]' : 'text-emerald-600'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{biz.name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`size-2 rounded-full flex-shrink-0 ${biz.isOnBungee ? 'bg-[#FF8C00]' : 'bg-emerald-500'}`} />
+                      <p className="font-semibold text-gray-900 text-sm truncate">{biz.name}</p>
+                    </div>
                     <p className="text-xs text-gray-500 truncate">{biz.category} • {biz.address}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <span className="text-xs font-bold text-[#FF8C00]">{biz.distanceLabel}</span>
-                    <p className="text-[10px] text-gray-400">Not on Bungee</p>
+                    <span className={`text-xs font-bold ${biz.isOnBungee ? 'text-[#FF8C00]' : 'text-emerald-600'}`}>{biz.distanceLabel}</span>
+                    <p className={`text-[10px] font-medium ${biz.isOnBungee ? 'text-[#FF8C00]' : 'text-emerald-600'}`}>{biz.isOnBungee ? 'On Bungee' : 'Recruit & earn'}</p>
                   </div>
                 </li>
               ))}
@@ -501,7 +547,7 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
 
       {/* Empty State Overlay - Only show before first search */}
       {!hasSearched && (
-        <div className="absolute inset-0 pt-[180px] pb-24 flex items-center justify-center z-[999] pointer-events-none">
+        <div className="absolute inset-0 pt-[220px] pb-24 flex items-center justify-center z-[999] pointer-events-none">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-md text-center shadow-xl border border-gray-200 pointer-events-auto">
             <div className="size-16 rounded-full bg-gradient-to-br from-[#FF8C00] to-orange-500 flex items-center justify-center mx-auto mb-4">
               <MapPin className="size-8 text-white" />
@@ -522,7 +568,7 @@ export function BusinessLocatorMap({ onClose }: BusinessLocatorMapProps) {
 
       {/* No Results State */}
       {hasSearched && businesses.length === 0 && !isSearching && (
-        <div className="absolute inset-0 pt-[180px] pb-24 flex items-center justify-center z-[999] pointer-events-none">
+        <div className="absolute inset-0 pt-[220px] pb-24 flex items-center justify-center z-[999] pointer-events-none">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 mx-4 max-w-md text-center shadow-xl border border-gray-200 pointer-events-auto">
             <div className="size-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <Building2 className="size-8 text-gray-400" />

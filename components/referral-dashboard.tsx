@@ -2673,47 +2673,69 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
       {/* Referral Code Modal - Full Screen */}
       {showReferModal && (
-        <div className="fixed inset-0 z-50 bg-[#1F2937] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
           <div className="min-h-full flex flex-col">
             {/* Header */}
-            <div className={`sticky top-0 z-10 p-4 sm:p-6 ${showReferModal === "business" ? "bg-gradient-to-r from-[#FF8C00]/20 to-orange-900/20" : "bg-gradient-to-r from-emerald-900/20 to-emerald-900/20"} border-b border-gray-700`}>
+            <div className={`sticky top-0 z-10 p-4 sm:p-6 ${showReferModal === "business" ? "bg-gradient-to-r from-[#FF8C00]/15 to-orange-100" : "bg-gradient-to-r from-emerald-100 to-emerald-50"} border-b border-gray-200`}>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowReferModal(null)}
-                  className="p-2.5 rounded-full bg-gray-700/90 hover:bg-gray-600 transition-colors border border-gray-600"
+                  className="p-2.5 rounded-full bg-white hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm"
                 >
-                  <ArrowLeft className="size-5 text-white" />
+                  <ArrowLeft className="size-5 text-gray-700" />
                 </button>
-                <div className={`size-12 rounded-xl ${showReferModal === "business" ? "bg-[#FF8C00]/20" : "bg-emerald-700/20"} flex items-center justify-center`}>
+                <div className={`size-12 rounded-xl ${showReferModal === "business" ? "bg-[#FF8C00]/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
                   {showReferModal === "business" ? (
                     <Building2 className="size-6 text-[#FF8C00]" />
                   ) : (
-                    <Users className="size-6 text-emerald-400" />
+                    <Users className="size-6 text-emerald-600" />
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">
+                  <h2 className="text-xl font-bold text-gray-900">
                     Refer a {showReferModal === "business" ? "Business" : "Bungee"}
                   </h2>
-                  <p className="text-sm text-gray-400">Share your unique code with others</p>
+                  <p className="text-sm text-gray-500">Share your unique code with others</p>
                 </div>
               </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 p-4 sm:p-6 space-y-5 max-w-md mx-auto w-full">
+              {/* Business Locator - only for business referrals */}
+              {showReferModal === "business" && (
+                <button
+                  onClick={() => {
+                    setShowReferModal(null)
+                    setShowBusinessLocator(true)
+                  }}
+                  className="w-full overflow-hidden rounded-2xl border border-[#FF8C00]/40 bg-white shadow-sm hover:shadow-md transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#FF8C00]/10 to-emerald-50">
+                    <div className="size-12 rounded-xl bg-[#FF8C00] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <Target className="size-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-gray-900">Open Business Locator</h3>
+                      <p className="text-xs text-gray-600">AI scans every business in your zip radius. Orange = already on Bungee, green = recruit &amp; earn residual.</p>
+                    </div>
+                    <ChevronRight className="size-5 text-[#FF8C00] flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+              )}
+
               {/* Your Unique Code */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-2 block">Your Unique Referral Code</label>
+                <label className="text-xs font-medium text-gray-500 mb-2 block">Your Unique Referral Code</label>
                 <div className="flex items-center gap-2">
-                  <div className={`flex-1 px-4 py-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/30" : "bg-emerald-700/10 border border-emerald-700/30"}`}>
-                    <p className={`text-lg font-mono font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <div className={`flex-1 px-4 py-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/30" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
+                    <p className={`text-lg font-mono font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                       {referralCodes[showReferModal]}
                     </p>
                   </div>
                   <Button 
                     onClick={handleCopyCode}
-                    className={`h-12 px-4 ${showReferModal === "business" ? "bg-[#FF8C00] hover:bg-[#E67E00]" : "bg-emerald-700 hover:bg-emerald-800"} text-white`}
+                    className={`h-12 px-4 ${showReferModal === "business" ? "bg-[#FF8C00] hover:bg-[#E67E00]" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
                   >
                     {copiedCode ? <Check className="size-5" /> : <Copy className="size-5" />}
                   </Button>
@@ -2722,53 +2744,53 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
               {/* Referral Link */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-2 block">Your Referral Link</label>
+                <label className="text-xs font-medium text-gray-500 mb-2 block">Your Referral Link</label>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden">
-                    <p className="text-sm text-gray-300 truncate">{referralLinks[showReferModal]}</p>
+                  <div className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 overflow-hidden">
+                    <p className="text-sm text-gray-600 truncate">{referralLinks[showReferModal]}</p>
                   </div>
                   <Button 
                     onClick={handleCopyLink}
                     variant="outline"
-                    className="h-10 px-3 border-gray-700 bg-gray-700 hover:bg-gray-600 text-white"
+                    className="h-10 px-3 border-gray-200 bg-white hover:bg-gray-100 text-gray-700"
                   >
-                    {copiedLink ? <Check className="size-4 text-emerald-400" /> : <LinkIcon className="size-4" />}
+                    {copiedLink ? <Check className="size-4 text-emerald-600" /> : <LinkIcon className="size-4" />}
                   </Button>
                 </div>
               </div>
 
               {/* Share Options */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-3 block">Share Via</label>
+                <label className="text-xs font-medium text-gray-500 mb-3 block">Share Via</label>
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     onClick={handleShareSMS}
                     variant="outline" 
-                    className="h-14 flex-col gap-1 border-gray-700 bg-gray-800 hover:bg-gray-700 hover:border-blue-500"
+                    className="h-14 flex-col gap-1 border-gray-200 bg-white hover:bg-gray-50 hover:border-blue-500"
                   >
-                    <MessageSquare className="size-5 text-blue-400" />
-                    <span className="text-xs text-gray-300">Text Message</span>
+                    <MessageSquare className="size-5 text-blue-500" />
+                    <span className="text-xs text-gray-700">Text Message</span>
                   </Button>
                   <Button 
                     onClick={handleShareEmail}
                     variant="outline" 
-                    className="h-14 flex-col gap-1 border-gray-700 bg-gray-800 hover:bg-gray-700 hover:border-purple-500"
+                    className="h-14 flex-col gap-1 border-gray-200 bg-white hover:bg-gray-50 hover:border-purple-500"
                   >
-                    <Mail className="size-5 text-purple-400" />
-                    <span className="text-xs text-gray-300">Email</span>
+                    <Mail className="size-5 text-purple-500" />
+                    <span className="text-xs text-gray-700">Email</span>
                   </Button>
                 </div>
               </div>
 
               {/* Bonus Info */}
-              <div className={`p-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/20" : "bg-emerald-700/10 border border-emerald-700/20"}`}>
+              <div className={`p-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
                 <div className="flex items-start gap-2">
-                  <Gift className={`size-5 mt-0.5 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`} />
+                  <Gift className={`size-5 mt-0.5 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`} />
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-gray-900">
                       {showReferModal === "business" ? "Earn $500 per business!" : "Earn $50 + 10% of their earnings!"}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {showReferModal === "business" 
                         ? "Plus 5% residual income from all transactions for 18 months"
                         : "Get residual income from their referrals for 18 months"
@@ -2781,16 +2803,16 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               {/* Stats */}
               <div className="flex justify-center gap-6 pt-2">
                 <div className="text-center">
-                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                     {modalReferralCount}
                   </p>
-                  <p className="text-xs text-gray-400">Successful Referrals</p>
+                  <p className="text-xs text-gray-500">Successful Referrals</p>
                 </div>
                 <div className="text-center">
-                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                     ${userStats.totalEarned.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400">Total Earned</p>
+                  <p className="text-xs text-gray-500">Total Earned</p>
                 </div>
               </div>
             </div>
