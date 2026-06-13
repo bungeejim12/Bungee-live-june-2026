@@ -2006,7 +2006,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={() => setShareModalItem({type: 'job', item: job})}>I Got Someone</Button>
+                          <Button size="sm" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={() => setShareModalItem({type: 'job', item: job})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'job', item: job})}>View Details</Button>
                         </div>
                       </div>
@@ -2105,7 +2105,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShareModalItem({type: 'service', item: service})}>I Got Someone</Button>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShareModalItem({type: 'service', item: service})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'service', item: service})}>View Details</Button>
                         </div>
                       </div>
@@ -2205,7 +2205,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShareModalItem({type: 'product', item: request})}>I Got Someone!</Button>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShareModalItem({type: 'product', item: request})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'product', item: request})}>Details</Button>
                         </div>
                       </div>
@@ -3193,7 +3193,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         }}
       />
 
-      {/* Share Modal - I Got Someone */}
+          {/* Share Modal - Oh! I Know Someone! */}
       {shareModalItem && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -3470,7 +3470,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   } text-white`}
                 >
                   <Share2 className="size-4 mr-2" />
-                  I Got Someone
+                  Oh! I Know Someone!
                 </Button>
                 <Button 
                   variant="outline"
