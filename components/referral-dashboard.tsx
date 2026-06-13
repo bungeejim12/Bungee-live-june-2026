@@ -862,34 +862,8 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <span className="text-[#FF8C00] font-semibold">Make referrals</span> and earn bounties
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  {/* Refer Services Card - Clean White */}
-                  <button 
-                    onClick={() => {
-                      setMainView("referrals")
-                      setActiveCategory("services")
-                    }}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500' : 'bg-white border-gray-200 hover:border-emerald-500'} hover:shadow-xl shadow-sm`}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img 
-                        src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
-                        alt="Home service professional"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Services</h3>
-                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Help friends find local pros and earn up to $1K per lead</p>
-                    </div>
-                    <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
-                      <Badge className="bg-emerald-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        15 Open
-                      </Badge>
-                    </div>
-                  </button>
-
-                  {/* Refer Products Card - Clean White */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  {/* Combined Products & Services Card */}
                   <button 
                     onClick={() => {
                       setMainView("referrals")
@@ -897,20 +871,25 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     }}
                     className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'} hover:shadow-xl shadow-sm`}
                   >
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div className="aspect-square w-full overflow-hidden grid grid-cols-2">
                       <img 
                         src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=300&fit=crop" 
                         alt="Product delivery packages"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
+                      <img 
+                        src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
+                        alt="Home service professional"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
                     </div>
                     <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Products</h3>
-                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Share favorite local products and claim cash bonuses</p>
+                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Products &amp; Services</h3>
+                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Refer local products and pros, then toggle between them to earn rewards</p>
                     </div>
                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                       <Badge className="bg-blue-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        $25-500
+                        Refer &amp; Earn
                       </Badge>
                     </div>
                   </button>
@@ -1293,49 +1272,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Browse and refer people from your network</p>
 
                 {/* Referral Category Cards - Premium Clean Design */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  {/* Refer Services Card - Clean White */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  {/* Combined Products & Services Card */}
                   <button 
-                    onClick={() => setActiveCategory("services")}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${activeCategory === "services" ? `ring-2 ring-emerald-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500' : 'bg-white border-gray-200 hover:border-emerald-500'}`} hover:shadow-md`}
+                    onClick={() => setActiveCategory(productServiceView === "products" ? "igotguy" : "services")}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${(activeCategory === "services" || activeCategory === "igotguy") ? `ring-2 ring-blue-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'}`} hover:shadow-md`}
                   >
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div className="aspect-square w-full overflow-hidden grid grid-cols-2">
                       <img 
                         src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
                         alt="Home service professional"
-                        className={`w-full h-full object-cover ${activeCategory === "services" ? 'opacity-90' : ''} group-hover:scale-110 transition-transform duration-500`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
-                    </div>
-                    <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Services</h3>
-                      <p className="text-[8px] sm:text-xs text-emerald-600 font-medium">Up to $1K</p>
-                    </div>
-                    <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
-                      <Badge className="bg-emerald-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        15 Open
-                      </Badge>
-                    </div>
-                  </button>
-
-                  {/* Refer Products Card - Clean White */}
-                  <button 
-                    onClick={() => setActiveCategory("igotguy")}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${activeCategory === "igotguy" ? `ring-2 ring-blue-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'}`} hover:shadow-md`}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
                       <img 
                         src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=300&fit=crop" 
                         alt="Product delivery packages"
-                        className={`w-full h-full object-cover ${activeCategory === "igotguy" ? 'opacity-90' : ''} group-hover:scale-110 transition-transform duration-500`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     </div>
                     <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Products</h3>
-                      <p className="text-[8px] sm:text-xs text-blue-600 font-medium">Product Rewards</p>
+                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Products &amp; Services</h3>
+                      <p className="text-[8px] sm:text-xs text-blue-600 font-medium">Up to $1K</p>
                     </div>
                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                       <Badge className="bg-blue-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        $25-500
+                        Refer &amp; Earn
                       </Badge>
                     </div>
                   </button>
@@ -2044,6 +2005,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)] sm:max-h-[60vh]">
+                  {/* Products / Services Toggle */}
+                  <div className={`flex items-center p-1 rounded-xl mb-4 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                    <button
+                      onClick={() => setActiveCategory("igotguy")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        (activeCategory as string) === "igotguy"
+                          ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <ShoppingBag className="size-4" />
+                      Products
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("services")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        activeCategory === "services"
+                          ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <Shield className="size-4" />
+                      Services
+                    </button>
+                  </div>
                   {/* Bungee Map Button */}
                   <div className="mb-4 flex justify-center">
                     <button 
@@ -2118,6 +2104,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)] sm:max-h-[60vh]">
+                  {/* Products / Services Toggle */}
+                  <div className={`flex items-center p-1 rounded-xl mb-4 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                    <button
+                      onClick={() => setActiveCategory("igotguy")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        activeCategory === "igotguy"
+                          ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <ShoppingBag className="size-4" />
+                      Products
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("services")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        (activeCategory as string) === "services"
+                          ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <Shield className="size-4" />
+                      Services
+                    </button>
+                  </div>
                   {/* Bungee Map Button */}
                   <div className="mb-4 flex justify-center">
                     <button 
