@@ -60,7 +60,6 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
-  Repeat,
   Wrench,
   Package,
   Coins,
@@ -3246,9 +3245,11 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
             }`}
           >
-            <Repeat className="w-4 h-4 text-[#FF8C00]" />
-            <span className="text-sm">Recurring Revenue — Check Your Lifetime Earnings</span>
-            <ChevronUp className={`w-4 h-4 transition-transform ${isDarkMode ? 'text-gray-400' : 'text-gray-400'} ${showReferMenu ? '' : 'rotate-180'}`} />
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/15">
+              <Banknote className="w-4 h-4 text-emerald-600" />
+            </span>
+            <span className="text-sm"><span className="font-bold text-emerald-600">Recurring Cash</span> — Check Your Lifetime Earnings</span>
+            <ChevronUp className={`w-4 h-4 transition-transform text-gray-400 ${showReferMenu ? '' : 'rotate-180'}`} />
           </button>
         </div>
       </div>
