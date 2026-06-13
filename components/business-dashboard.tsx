@@ -21,7 +21,7 @@ import ProductsServicesWizard from "@/components/products-services-wizard"
 import BountyCreationPage from "@/components/bounty-creation-page"
 import BusinessVerificationModal from "@/components/business-verification-modal"
 import CandidateManagementWizard from "@/components/candidate-management-wizard"
-import AiJobWizard from "@/components/ai-job-wizard"
+import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
@@ -233,6 +233,24 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
   const [showCandidateWizard, setShowCandidateWizard] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [showJobOrderWizard, setShowJobOrderWizard] = useState(false)
+  // Job orders the business routed to the Pro-Bungee recruiter desk (mirrored from the wizard).
+  const [proRecruiterOrders, setProRecruiterOrders] = useState<
+    { title: string; compensation: string; workModel: string; bounty: string; createdAt: number }[]
+  >([])
+  // When the wizard finishes, mirror any pro-recruiter-routed order into Managed Recruiting.
+  const handleJobOrderCreated = (order: CreatedJobOrder) => {
+    if (!order.sendToProRecruiters) return
+    setProRecruiterOrders((prev) => [
+      {
+        title: order.title,
+        compensation: order.compensation,
+        workModel: order.workModel,
+        bounty: order.bounty,
+        createdAt: Date.now(),
+      },
+      ...prev,
+    ])
+  }
   const [showBusinessInfo, setShowBusinessInfo] = useState(false)
   const [showOpenPositions, setShowOpenPositions] = useState(false)
   const [showMarketplaceListings, setShowMarketplaceListings] = useState(false)
@@ -470,6 +488,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   onClose={() => setShowJobOrderWizard(false)}
                   business={{ businessName: userProfile?.business_name || businessName }}
                   isDemo={isDemo}
+                  onJobOrderCreated={handleJobOrderCreated}
                 />
               ) : (
                 /* Show hiring options */
@@ -3856,6 +3875,38 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Job orders routed here from the AI Job Wizard */}
+              {proRecruiterOrders.length > 0 && (
+                <div className="p-4 rounded-lg bg-orange-50 dark:bg-[#FF8C00]/10 border border-[#FF8C00]/40">
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Send className="size-4 text-[#FF8C00]" /> Your Job Orders Sent to Pro Recruiters
+                  </h3>
+                  <div className="space-y-2">
+                    {proRecruiterOrders.map((order, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{order.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+                            {order.compensation && <span>{order.compensation}</span>}
+                            {order.workModel && <span>{order.workModel}</span>}
+                            {order.bounty && <span>${order.bounty} bounty</span>}
+                          </div>
+                        </div>
+                        <Badge className="bg-amber-50 text-gray-800 border-2 border-[#FF8C00] text-xs font-semibold shadow-sm shrink-0">
+                          Recruiters Notified
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">
+                    A Pro-Bungee recruiter will pick up these roles and present a shortlist within 5-10 business days.
+                  </p>
+                </div>
+              )}
+
               {/* Fee Breakdown */}
               <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><DollarSign className="size-4 text-gray-900 dark:text-white" /> Fee Structure &amp; Agreement</h3>
@@ -3963,6 +4014,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                 onClose={() => setShowJobOrderWizard(false)}
                 business={{ businessName: userProfile?.business_name || businessName }}
                 isDemo={isDemo}
+                onJobOrderCreated={handleJobOrderCreated}
               />
             </div>
           </div>

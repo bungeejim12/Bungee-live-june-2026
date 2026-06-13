@@ -26,6 +26,8 @@ import {
   Megaphone,
   RotateCcw,
   AlertCircle,
+  UserCheck,
+  Check,
 } from "lucide-react"
 
 interface BusinessContext {
@@ -33,10 +35,22 @@ interface BusinessContext {
   location?: string | null
 }
 
+export interface CreatedJobOrder {
+  title: string
+  compensation: string
+  workModel: string
+  location?: string
+  summary: string
+  bounty: string
+  sendToProRecruiters: boolean
+}
+
 interface AiJobWizardProps {
   onClose: () => void
   business?: BusinessContext
   isDemo?: boolean
+  /** Fired after a job order is created so the dashboard can mirror it (e.g. into Managed Recruiting). */
+  onJobOrderCreated?: (order: CreatedJobOrder) => void
 }
 
 type WorkModel = "On-Site" | "Hybrid" | "Remote"
@@ -76,7 +90,7 @@ const AI_PROMPTS = [
 
 const TOTAL_STEPS = 4
 
-export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardProps) {
+export default function AiJobWizard({ onClose, business, isDemo, onJobOrderCreated }: AiJobWizardProps) {
   const [step, setStep] = useState(1)
   const [answers, setAnswers] = useState<Answers>({
     title: "",
@@ -93,6 +107,7 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [sendToProRecruiters, setSendToProRecruiters] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Keep the transcript scrolled to the latest message.
@@ -192,10 +207,21 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
     setSaving(true)
     setSaveError("")
 
+    const createdOrder: CreatedJobOrder = {
+      title: summary.title,
+      compensation: summary.compensation,
+      workModel: summary.workModel,
+      location: business?.location || undefined,
+      summary: summary.summary,
+      bounty: answers.bounty,
+      sendToProRecruiters,
+    }
+
     // In demo mode there's no authenticated business, so skip the DB write.
     if (isDemo) {
       setTimeout(() => {
         setSaving(false)
+        onJobOrderCreated?.(createdOrder)
         setSubmitted(true)
       }, 700)
       return
@@ -213,9 +239,11 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
       bountyAmount: Number.isFinite(bountyNum) ? bountyNum : undefined,
       bountyTrigger: "Successful hire",
       summary: summary.summary,
+      sendToProRecruiters,
     })
     setSaving(false)
     if (res.success) {
+      onJobOrderCreated?.(createdOrder)
       setSubmitted(true)
     } else {
       setSaveError(res.error || "Couldn't save the job order. Please try again.")
@@ -242,6 +270,11 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
           Your {summary?.title || "role"} is ready to send to the Cord referral network with a{" "}
           ${answers.bounty} bounty.
+          {sendToProRecruiters && (
+            <span className="block mt-2 text-[#FF8C00] font-medium">
+              It&apos;s also been routed to your Managed Recruiting desk for Pro-Bungee recruiters.
+            </span>
+          )}
         </p>
         <Button onClick={onClose} className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold">
           Back to Hiring
@@ -317,10 +350,40 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
           </div>
         </div>
 
+        {/* Optional: also route to Pro-Bungee recruiters */}
+        <button
+          type="button"
+          onClick={() => setSendToProRecruiters((v) => !v)}
+          aria-pressed={sendToProRecruiters}
+          className={`w-full mt-5 flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+            sendToProRecruiters
+              ? "border-[#FF8C00] bg-orange-50 dark:bg-[#FF8C00]/10"
+              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-[#FF8C00]/60"
+          }`}
+        >
+          <span
+            className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+              sendToProRecruiters ? "border-[#FF8C00] bg-[#FF8C00]" : "border-gray-300 dark:border-gray-600"
+            }`}
+          >
+            {sendToProRecruiters && <Check className="size-3.5 text-white" />}
+          </span>
+          <span className="flex-1">
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-white">
+              <UserCheck className="size-4 text-[#FF8C00]" />
+              Also send to Pro-Bungee recruiters
+            </span>
+            <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+              Have professional recruiters work this role too — at 10-12% (half the industry rate). A copy appears in
+              your Managed Recruiting desk.
+            </span>
+          </span>
+        </button>
+
         <Button
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full mt-5 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold h-11 disabled:opacity-60"
+          className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold h-11 disabled:opacity-60"
         >
           {saving ? (
             <>
@@ -330,7 +393,7 @@ export default function AiJobWizard({ onClose, business, isDemo }: AiJobWizardPr
           ) : (
             <>
               <Send className="size-4 mr-1.5" />
-              Send to Cord Network
+              {sendToProRecruiters ? "Send to Cord + Pro Recruiters" : "Send to Cord Network"}
             </>
           )}
         </Button>

@@ -13,12 +13,30 @@ export interface CreateJobOrderInput {
   bountyAmount?: number
   bountyTrigger?: string
   summary?: string
+  /** When true, the order is also routed to the Pro-Bungee recruiter desk. */
+  sendToProRecruiters?: boolean
 }
 
 export interface CreateJobOrderResult {
   success: boolean
   id?: string
   error?: string
+}
+
+export interface JobOrderRecord {
+  id: string
+  title: string
+  work_model: string | null
+  location: string | null
+  compensation: string | null
+  requirements: string | null
+  selling_points: string | null
+  bounty_amount: number | null
+  summary: string | null
+  status: string
+  send_to_pro_recruiters: boolean
+  pro_recruiter_status: string | null
+  created_at: string
 }
 
 /**
@@ -56,6 +74,8 @@ export async function createJobOrder(input: CreateJobOrderInput): Promise<Create
       bounty_trigger: input.bountyTrigger?.trim() || null,
       summary: input.summary?.trim() || null,
       status: "active",
+      send_to_pro_recruiters: input.sendToProRecruiters ?? false,
+      pro_recruiter_status: input.sendToProRecruiters ? "requested" : null,
     })
     .select("id")
     .single()
@@ -66,4 +86,33 @@ export async function createJobOrder(input: CreateJobOrderInput): Promise<Create
   }
 
   return { success: true, id: data.id }
+}
+
+/**
+ * Fetches job orders that the business routed to the Pro-Bungee recruiter desk.
+ * Used by the Managed Recruiting view. RLS scopes rows to the authenticated business.
+ */
+export async function getProRecruiterJobOrders(): Promise<JobOrderRecord[]> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from("job_orders")
+    .select(
+      "id, title, work_model, location, compensation, requirements, selling_points, bounty_amount, summary, status, send_to_pro_recruiters, pro_recruiter_status, created_at",
+    )
+    .eq("send_to_pro_recruiters", true)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("[v0] getProRecruiterJobOrders error:", error.message)
+    return []
+  }
+
+  return (data ?? []) as JobOrderRecord[]
 }
