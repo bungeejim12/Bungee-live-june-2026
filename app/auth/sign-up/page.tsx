@@ -14,14 +14,16 @@ import { completeSignupProfile, getReferrerByCode } from "@/app/actions/referral
 import { getReferrerDisplayName, type ReferrerInfo } from "@/lib/referrals"
 import { SupabaseConfigBanner } from "@/components/supabase-config-banner"
 import { isSupabaseClientConfigured } from "@/lib/supabase/client"
+import { AvatarCreator } from "@/components/avatar-creator"
 
 type UserType = "bungee" | "business"
-type Step = "type" | "details" | "verify-sms"
+type Step = "type" | "details" | "verify-sms" | "avatar"
 
 function SignUpContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const referralCodeParam = searchParams.get("ref")
+  const asParam = searchParams.get("as") // tracking tag: "bungee" | "business"
   const [step, setStep] = useState<Step>("type")
   const [userType, setUserType] = useState<UserType | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -50,6 +52,9 @@ function SignUpContent() {
   
   // Development/configuration notice state
   const [showConfigNotice, setShowConfigNotice] = useState(false)
+
+  // Avatar onboarding state
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
 
   // Referral invite state
   const [referralCode, setReferralCode] = useState<string | null>(null)
@@ -101,6 +106,16 @@ function SignUpContent() {
     clearStaleAuthState()
   }, [referralCodeParam])
 
+  // Honor the tracking tag from the referral link. `as=bungee` automatically
+  // classifies the new signup as a Bungee referrer (and `as=business` as a
+  // business) so the 18-month residual splits attribute to the right side.
+  useEffect(() => {
+    if (asParam === "bungee" || asParam === "business") {
+      setUserType(asParam)
+      setStep((current) => (current === "type" ? "details" : current))
+    }
+  }, [asParam])
+
   useEffect(() => {
     if (!referralCode) return
 
@@ -109,7 +124,10 @@ function SignUpContent() {
       const referrerData = await getReferrerByCode(referralCode)
       if (referrerData) {
         setReferrer(referrerData)
-        if (referrerData.user_type === "business") {
+        // Explicit `as` tag wins; otherwise fall back to the referrer's own type.
+        if (asParam === "bungee" || asParam === "business") {
+          setUserType(asParam)
+        } else if (referrerData.user_type === "business") {
           setUserType("business")
         }
       }
@@ -117,7 +135,7 @@ function SignUpContent() {
     }
 
     loadReferrer()
-  }, [referralCode])
+  }, [referralCode, asParam])
 
   // Format phone number for display
   const formatPhoneDisplay = (value: string) => {
@@ -350,6 +368,14 @@ function SignUpContent() {
           ? '/dashboard/business?authenticated=true' 
           : '/dashboard/bungee?authenticated=true'
         setRedirectPath(targetPath)
+
+        // Bungee users build their avatar before entering the dashboard.
+        if (userType === 'bungee') {
+          setStep('avatar')
+          setIsVerifyingOtp(false)
+          return
+        }
+
         setSessionAcquired(true)
         setIsVerifyingOtp(false)
         
@@ -409,6 +435,34 @@ function SignUpContent() {
     setIsLoading(false)
   }
 
+  // Persist the generated Bungee avatar, then continue to the dashboard.
+  const handleAvatarComplete = async (dataUrl: string) => {
+    if (isSavingAvatar) return
+    setIsSavingAvatar(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/avatar/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Could not save your avatar.')
+      }
+    } catch (e) {
+      // Non-blocking: let the user into the app even if the save fails.
+      console.error('[v0] avatar save failed:', e)
+    } finally {
+      setIsSavingAvatar(false)
+      if (redirectPath) router.push(redirectPath)
+    }
+  }
+
+  const handleSkipAvatar = () => {
+    if (redirectPath) router.push(redirectPath)
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -433,7 +487,7 @@ function SignUpContent() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center p-4 md:p-8">
-        <Card className="w-full max-w-md shadow-md border-0 bg-white rounded-lg">
+        <Card className={`w-full ${step === "avatar" ? "max-w-2xl" : "max-w-md"} shadow-md border-0 bg-white rounded-lg`}>
 
           {referrer && (
             <div className="mx-6 mt-6 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
@@ -474,32 +528,55 @@ function SignUpContent() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
+                {/* BUSINESS — blue identity */}
                 <button
                   onClick={() => handleTypeSelect("business")}
-                  className="flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 hover:border-[#FF8C00] hover:bg-orange-50 transition-all text-left group"
+                  className="group overflow-hidden rounded-2xl border-2 border-blue-200 bg-white text-left shadow-sm transition-all hover:border-blue-500 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
-                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                    <Building2 className="h-6 w-6 text-[#FF8C00]" />
+                  <div className="relative h-28 w-full overflow-hidden">
+                    <Image src="/images/choose-business.png" alt="Business owner" fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 to-blue-900/10" />
+                    <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow">
+                      <Building2 className="h-3.5 w-3.5" />
+                      For Businesses
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900">Business Account</h3>
-                    <p className="text-sm text-slate-600">Post jobs and hire Bungee workers</p>
+                  <div className="flex items-center gap-3 p-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-blue-700">Business Account</h3>
+                      <p className="text-sm text-slate-600">Post jobs and hire</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 ml-auto text-blue-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" />
                   </div>
-                  <ArrowRight className="h-5 w-5 ml-auto text-slate-400 group-hover:text-[#FF8C00] transition-colors" />
                 </button>
 
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-xs font-medium text-slate-400">or</span>
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+
+                {/* BUNGEE — orange identity */}
                 <button
                   onClick={() => handleTypeSelect("bungee")}
-                  className="flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 hover:border-[#FF8C00] hover:bg-orange-50 transition-all text-left group"
+                  className="group overflow-hidden rounded-2xl border-2 border-orange-200 bg-white text-left shadow-sm transition-all hover:border-[#FF8C00] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8C00]"
                 >
-                  <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                    <Users className="h-6 w-6 text-[#FF8C00]" />
+                  <div className="relative h-28 w-full overflow-hidden">
+                    <Image src="/images/choose-bungee.png" alt="Bungee worker" fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-orange-900/70 to-orange-900/10" />
+                    <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#FF8C00] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow">
+                      <Users className="h-3.5 w-3.5" />
+                      For Bungees
+                    </span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900">Bungee Worker</h3>
-                    <p className="text-sm text-slate-600">Find flexible work opportunities</p>
+                  <div className="flex items-center gap-3 p-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-[#E67E00]">Bungee</h3>
+                      <p className="text-sm text-slate-600">Refer and earn</p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 ml-auto text-orange-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#FF8C00]" />
                   </div>
-                  <ArrowRight className="h-5 w-5 ml-auto text-slate-400 group-hover:text-[#FF8C00] transition-colors" />
                 </button>
               </CardContent>
             </>
@@ -782,6 +859,35 @@ function SignUpContent() {
                     Back to Edit Details
                   </Button>
                 </div>
+              </CardContent>
+            </>
+          )}
+
+          {/* Step 4: Bungee Avatar Creator */}
+          {step === "avatar" && (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold text-slate-900">Create Your Bungee</CardTitle>
+                <CardDescription className="text-slate-600">
+                  Upload a photo or describe your vibe. We&apos;ll build your avatar on a Green Cord body that levels
+                  up as you rank.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AvatarCreator
+                  level={1}
+                  firstName={firstName}
+                  onComplete={handleAvatarComplete}
+                  saving={isSavingAvatar}
+                />
+                <button
+                  type="button"
+                  onClick={handleSkipAvatar}
+                  disabled={isSavingAvatar}
+                  className="mt-4 w-full text-sm font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                >
+                  Skip for now
+                </button>
               </CardContent>
             </>
           )}

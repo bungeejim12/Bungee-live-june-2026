@@ -1,19 +1,20 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { DollarSign, Briefcase, Award, CheckCircle2, Sparkles, X, Globe, Loader2, ChevronLeft, ChevronRight, Check, Users, Building2, Wallet, Info, Mail, Copy, Share2, Package, Wrench, MessageSquare } from 'lucide-react';
+import { VoiceTextarea as Textarea } from '@/components/voice-textarea';
+import { DollarSign, Briefcase, Award, CheckCircle2, Sparkles, X, Globe, Loader2, ChevronLeft, ChevronRight, Check, Users, Building2, Wallet, Info, Mail, Copy, Share2, Package, Wrench, MessageSquare, ArrowLeft, ImageIcon, Upload, Percent, Gift, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   generateSmsPayload, 
   generateSmsProtocolUrl,
   type DaisyChainPayload,
   type CampaignType as DaisyChainCampaignType
 } from '@/lib/daisy-chain-sms';
+import { createBounty, type RewardType } from '@/app/actions/bounties';
 
 interface ServiceBountyWizardProps {
   onClose?: () => void;
@@ -67,6 +68,21 @@ export default function ServiceBountyWizard({ onClose, businessName = 'Your Busi
   // Step 3: Bounty Financial Fields
   const [bountyAmount, setBountyAmount] = useState<string>('');
   const [split, setSplit] = useState({ bungeeReward: 0, corporateFee: 0, totalEscrow: 0 });
+
+  // Step 3: Reward type (flat fee / percentage commission / custom reward)
+  const [rewardType, setRewardType] = useState<RewardType>('flat');
+  const [rewardPercentage, setRewardPercentage] = useState<string>('');
+  const [rewardCustomText, setRewardCustomText] = useState<string>('');
+
+  // Step 2: Image upload (stored in Vercel Blob)
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Launch / save status
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string>('');
   
   // Success state (Step 4)
   const [isCopied, setIsCopied] = useState(false);
@@ -131,11 +147,19 @@ export default function ServiceBountyWizard({ onClose, businessName = 'Your Busi
     }
   };
 
-  // Update split calculation when bounty amount changes
+  // Update split calculation when reward inputs change.
+  // Flat: reward = entered amount. Percentage: reward = rate% of estimated sale value.
   useEffect(() => {
-    const amount = parseFloat(bountyAmount) || 0;
-    setSplit(calculateEscrowSplit(amount));
-  }, [bountyAmount]);
+    let reward = 0;
+    if (rewardType === 'flat') {
+      reward = parseFloat(bountyAmount) || 0;
+    } else if (rewardType === 'percentage') {
+      const rate = parseFloat(rewardPercentage) || 0;
+      const saleValue = parseFloat(bountyAmount) || 0;
+      reward = (rate / 100) * saleValue;
+    }
+    setSplit(calculateEscrowSplit(reward));
+  }, [bountyAmount, rewardPercentage, rewardType]);
 
   const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
@@ -149,12 +173,93 @@ export default function ServiceBountyWizard({ onClose, businessName = 'Your Busi
     }).format(amount);
   };
 
-  // Handle campaign launch
-  const handleLaunchCampaign = () => {
-    const bountyId = `campaign_${Date.now()}`;
-    const generatedUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/refer/${bountyId}`;
-    setCampaignUrl(generatedUrl);
-    nextStep();
+  // Upload a product/service image to Vercel Blob
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError('');
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/bounties/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        setUploadError(result.error || 'Upload failed. Please try again.');
+        return;
+      }
+
+      setImageUrl(result.url);
+    } catch (error) {
+      console.error('[v0] Image upload error:', error);
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+      // Reset the input so the same file can be re-selected if removed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = () => {
+    setImageUrl('');
+    setUploadError('');
+  };
+
+  // Handle campaign launch — persists the bounty to Supabase before showing success
+  const handleLaunchCampaign = async () => {
+    setLaunchError('');
+    setIsLaunching(true);
+
+    try {
+      const title = getCampaignTitle();
+      const description =
+        selectedCategory === 'recruiting'
+          ? roleDescription
+          : selectedCategory === 'services'
+          ? targetClientPersona
+          : keySellingPoints;
+
+      const result = await createBounty({
+        category: selectedCategory as 'recruiting' | 'services' | 'products',
+        title,
+        description,
+        department: department || undefined,
+        locationStyle: locationStyle || undefined,
+        targetPersona: targetClientPersona || projectScope || undefined,
+        keySellingPoints: keySellingPoints || undefined,
+        websiteUrl: catalogUrl || websiteUrl || undefined,
+        imageUrl: imageUrl || undefined,
+        rewardType,
+        rewardAmount: rewardType === 'flat' ? parseFloat(bountyAmount) || 0 : undefined,
+        rewardPercentage: rewardType === 'percentage' ? parseFloat(rewardPercentage) || 0 : undefined,
+        rewardCustomText: rewardType === 'custom' ? rewardCustomText : undefined,
+        bungeeReward: split.bungeeReward,
+        corporateFee: split.corporateFee,
+        totalEscrow: split.totalEscrow,
+      });
+
+      if (!result.success || !result.id) {
+        setLaunchError(result.error || 'Failed to launch campaign. Please try again.');
+        return;
+      }
+
+      const generatedUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/refer/${result.id}`;
+      setCampaignUrl(generatedUrl);
+      nextStep();
+    } catch (error) {
+      console.error('[v0] Launch campaign error:', error);
+      setLaunchError('Failed to launch campaign. Please try again.');
+    } finally {
+      setIsLaunching(false);
+    }
   };
 
   // Get campaign title based on category
@@ -240,6 +345,20 @@ ${businessName}`;
     }
   };
 
+  // Check if step 3 (reward configuration) is valid based on the chosen reward type
+  const isStep3Valid = () => {
+    switch (rewardType) {
+      case 'flat':
+        return !!bountyAmount && parseFloat(bountyAmount) > 0;
+      case 'percentage':
+        return !!rewardPercentage && parseFloat(rewardPercentage) > 0;
+      case 'custom':
+        return rewardCustomText.trim().length > 0;
+      default:
+        return false;
+    }
+  };
+
   // Category cards data
   const categories = [
     {
@@ -267,6 +386,20 @@ ${businessName}`;
 
   return (
     <div className="w-full">
+      {/* TOP BAR: Back arrow returns to the main hub */}
+      {onClose && (
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+            aria-label="Back to hub"
+          >
+            <ArrowLeft className="size-5" />
+            Back
+          </button>
+        </div>
+      )}
+
       {/* PROGRESS TRACKER (STEPS 1-3) */}
       {step <= 3 && (
         <div className="mb-6 sm:mb-8">
@@ -340,11 +473,13 @@ ${businessName}`;
               {categories.map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = selectedCategory === cat.id;
-                const colorClasses = {
+                const colorClasses = ({
                   blue: { bg: 'bg-blue-50', border: 'border-blue-500', iconBg: 'bg-blue-100', icon: 'text-blue-600', ring: 'ring-blue-500/20' },
                   emerald: { bg: 'bg-emerald-50', border: 'border-emerald-500', iconBg: 'bg-emerald-100', icon: 'text-emerald-600', ring: 'ring-emerald-500/20' },
                   orange: { bg: 'bg-orange-50', border: 'border-[#FF8C00]', iconBg: 'bg-orange-100', icon: 'text-[#FF8C00]', ring: 'ring-[#FF8C00]/20' }
-                }[cat.color];
+                } as const)[cat.color as 'blue' | 'emerald' | 'orange'] ?? {
+                  bg: 'bg-gray-50', border: 'border-gray-300', iconBg: 'bg-gray-100', icon: 'text-gray-600', ring: 'ring-gray-300/20'
+                };
                 
                 return (
                   <button
@@ -453,6 +588,66 @@ ${businessName}`;
                   <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">
                     <CheckCircle2 className="size-3" />
                     Fields auto-filled from your website. Review and adjust as needed.
+                  </p>
+                )}
+              </div>
+
+              {/* IMAGE UPLOAD - Optional visual for the campaign */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">
+                  {selectedCategory === 'recruiting' ? 'Company / Team Photo' : selectedCategory === 'products' ? 'Product Image' : 'Service Image'}
+                  <span className="text-gray-400 font-normal"> (optional)</span>
+                </Label>
+
+                {imageUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imageUrl || "/placeholder.svg"} alt="Campaign visual preview" className="w-full h-44 object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 size-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-colors"
+                      aria-label="Remove image"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="w-full flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 hover:border-[#FF8C00]/50 transition-colors disabled:opacity-60"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="size-6 text-[#FF8C00] animate-spin" />
+                        <span className="text-sm text-gray-500">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="size-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+                          <Upload className="size-5 text-gray-400" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">Click to upload an image</span>
+                        <span className="text-xs text-gray-400">JPG, PNG, WEBP or GIF up to 5MB</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+
+                {uploadError && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="size-3" />
+                    {uploadError}
                   </p>
                 )}
               </div>
@@ -603,25 +798,110 @@ ${businessName}`;
                 </p>
               </div>
 
-              {/* Bounty Input */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-800">Reward Offered to the Bungee</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 size-6 text-gray-700" />
-                  <Input 
-                    type="number" 
-                    placeholder="100" 
-                    value={bountyAmount}
-                    onChange={(e) => setBountyAmount(e.target.value)}
-                    className="pl-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-16 text-3xl font-bold rounded-xl" 
-                  />
+              {/* Reward Type Selector */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold text-gray-800">Reward Type</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { type: 'flat' as RewardType, icon: DollarSign, label: 'Flat Fee' },
+                    { type: 'percentage' as RewardType, icon: Percent, label: 'Commission' },
+                    { type: 'custom' as RewardType, icon: Gift, label: 'Custom' },
+                  ].map(({ type, icon: Icon, label }) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setRewardType(type)}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                        rewardType === type
+                          ? 'border-[#FF8C00] bg-[#FF8C00]/5 shadow-sm'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className={`size-5 ${rewardType === type ? 'text-[#FF8C00]' : 'text-gray-400'}`} />
+                      <span className={`text-xs font-semibold ${rewardType === type ? 'text-[#FF8C00]' : 'text-gray-600'}`}>
+                        {label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-500">
-                  This is what the Bungee referrer receives for each successful conversion.
-                </p>
               </div>
 
-              {/* Live Split-Fee Calculation Card */}
+              {/* FLAT FEE INPUT */}
+              {rewardType === 'flat' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-800">Reward Offered to the Bungee</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 size-6 text-gray-700" />
+                    <Input 
+                      type="number" 
+                      placeholder="100" 
+                      value={bountyAmount}
+                      onChange={(e) => setBountyAmount(e.target.value)}
+                      className="pl-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-16 text-3xl font-bold rounded-xl" 
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    This is what the Bungee referrer receives for each successful conversion.
+                  </p>
+                </div>
+              )}
+
+              {/* PERCENTAGE COMMISSION INPUT */}
+              {rewardType === 'percentage' && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-800">Commission Rate</Label>
+                    <div className="relative">
+                      <Percent className="absolute right-4 top-1/2 -translate-y-1/2 size-6 text-gray-700" />
+                      <Input
+                        type="number"
+                        placeholder="10"
+                        value={rewardPercentage}
+                        onChange={(e) => setRewardPercentage(e.target.value)}
+                        className="pr-12 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-16 text-3xl font-bold rounded-xl"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Percentage of the transaction value the referrer earns per successful conversion.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-700">Estimated Sale Value (for escrow estimate)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                      <Input
+                        type="number"
+                        placeholder="1000"
+                        value={bountyAmount}
+                        onChange={(e) => setBountyAmount(e.target.value)}
+                        className="pl-9 bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 h-11"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      We use this to estimate the reward and escrow. The reward is calculated as the commission rate applied to this value.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* CUSTOM REWARD INPUT */}
+              {rewardType === 'custom' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-800">Describe the Reward</Label>
+                  <Textarea
+                    placeholder="e.g., $250 gift card + free annual subscription, store credit, branded merchandise..."
+                    value={rewardCustomText}
+                    onChange={(e) => setRewardCustomText(e.target.value)}
+                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 min-h-[100px] resize-none"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Describe a non-cash or custom reward. You'll coordinate fulfillment directly upon a successful referral.
+                  </p>
+                </div>
+              )}
+
+              {/* Live Split-Fee Calculation Card (cash rewards only) */}
+              {rewardType !== 'custom' && (
               <div className="rounded-xl border-2 border-gray-200 bg-white overflow-hidden shadow-sm">
                 <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
                   <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
@@ -677,6 +957,15 @@ ${businessName}`;
                   </div>
                 </div>
               </div>
+              )}
+
+              {/* Launch error message */}
+              {launchError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                  <AlertCircle className="size-4 text-red-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-red-700">{launchError}</p>
+                </div>
+              )}
             </CardContent>
           </>
         )}
@@ -696,14 +985,25 @@ ${businessName}`;
             <CardContent className="space-y-5 pt-4 px-6 pb-6">
               {/* Split Summary */}
               <div className="rounded-xl p-4 bg-gray-50 border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Bungee Reward</span>
-                  <span className="text-lg font-bold text-emerald-600">{formatCurrency(split.bungeeReward)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Total Escrow (on success)</span>
-                  <span className="font-semibold text-gray-800">{formatCurrency(split.totalEscrow)}</span>
-                </div>
+                {rewardType === 'custom' ? (
+                  <div className="flex justify-between items-start gap-3">
+                    <span className="text-sm text-gray-600 shrink-0">Custom Reward</span>
+                    <span className="text-sm font-semibold text-gray-800 text-right">{rewardCustomText}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">
+                        {rewardType === 'percentage' ? `Bungee Reward (${rewardPercentage || 0}% commission)` : 'Bungee Reward'}
+                      </span>
+                      <span className="text-lg font-bold text-emerald-600">{formatCurrency(split.bungeeReward)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total Escrow (on success)</span>
+                      <span className="font-semibold text-gray-800">{formatCurrency(split.totalEscrow)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Broadcast Section */}
@@ -807,11 +1107,20 @@ ${businessName}`;
             {step === 3 && (
               <Button 
                 onClick={handleLaunchCampaign}
-                disabled={!bountyAmount || parseFloat(bountyAmount) <= 0}
+                disabled={!isStep3Valid() || isLaunching}
                 className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold px-6 disabled:opacity-50"
               >
-                Launch Campaign
-                <ChevronRight className="size-4 ml-1" />
+                {isLaunching ? (
+                  <>
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                    Launching...
+                  </>
+                ) : (
+                  <>
+                    Launch Campaign
+                    <ChevronRight className="size-4 ml-1" />
+                  </>
+                )}
               </Button>
             )}
           </CardFooter>

@@ -546,34 +546,57 @@ function LoginContent() {
             <p className="text-gray-600 text-center mb-6">Choose your experience</p>
 
             <div className="space-y-4">
+              {/* BUSINESS — blue identity, "I'm hiring / I own a business" */}
               <button
                 type="button"
                 onClick={() => handleDemoAccess('business')}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-[#FF8C00] hover:bg-[#FF8C00]/5 transition-all"
+                className="group w-full overflow-hidden rounded-2xl border-2 border-blue-200 bg-white text-left shadow-sm transition-all hover:border-blue-500 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#FF8C00]/10 flex items-center justify-center">
-                  <Building2 className="h-6 w-6 text-[#FF8C00]" />
+                <div className="relative h-28 w-full overflow-hidden">
+                  <Image src="/images/choose-business.png" alt="Business owner" fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 to-blue-900/10" />
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow">
+                    <Building2 className="h-3.5 w-3.5" />
+                    For Businesses
+                  </span>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-[#0f172a]">Business Dashboard</h3>
-                  <p className="text-sm text-gray-600">Explore hiring features</p>
+                <div className="flex items-center gap-3 p-4">
+                  <div>
+                  <h3 className="text-lg font-bold text-blue-700">Business Dashboard</h3>
+                  <p className="text-sm text-gray-600">Post jobs and hire</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 ml-auto text-blue-400 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" />
                 </div>
-                <ArrowRight className="h-5 w-5 ml-auto text-gray-400" />
               </button>
 
+              {/* Divider to separate the two clearly */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span className="text-xs font-medium text-gray-400">or</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+
+              {/* BUNGEE — orange identity, "I'm a worker / referrer" */}
               <button
                 type="button"
                 onClick={() => handleDemoAccess('bungee')}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-[#FF8C00] hover:bg-[#FF8C00]/5 transition-all"
+                className="group w-full overflow-hidden rounded-2xl border-2 border-orange-200 bg-white text-left shadow-sm transition-all hover:border-[#FF8C00] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF8C00]"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#FF8C00]/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-[#FF8C00]" />
+                <div className="relative h-28 w-full overflow-hidden">
+                  <Image src="/images/choose-bungee.png" alt="Bungee worker" fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-orange-900/70 to-orange-900/10" />
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-[#FF8C00] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white shadow">
+                    <Users className="h-3.5 w-3.5" />
+                    For Bungees
+                  </span>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-[#0f172a]">Bungee Dashboard</h3>
-                  <p className="text-sm text-gray-600">Explore worker features</p>
+                <div className="flex items-center gap-3 p-4">
+                  <div>
+                  <h3 className="text-lg font-bold text-[#E67E00]">Bungee Dashboard</h3>
+                  <p className="text-sm text-gray-600">Refer and earn</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 ml-auto text-orange-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#FF8C00]" />
                 </div>
-                <ArrowRight className="h-5 w-5 ml-auto text-gray-400" />
               </button>
             </div>
 

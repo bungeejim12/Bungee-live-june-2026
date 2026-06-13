@@ -7,6 +7,7 @@ import {
   Eye, 
   EyeOff,
   RefreshCw,
+  FileText,
   X,
   DollarSign,
   Shield,
@@ -54,6 +55,20 @@ interface FlaggedItem {
   trustScore?: number
 }
 
+interface SignedDocRecord {
+  id: string
+  user_id: string
+  doc_key: string
+  doc_title: string
+  doc_version: string
+  audience: string
+  signer_name: string
+  signed_at: string
+  account_name: string
+  account_email: string | null
+  account_type: string | null
+}
+
 export default function CorporateAdminDashboard({ onClose }: CorporateAdminDashboardProps) {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -93,6 +108,34 @@ export default function CorporateAdminDashboard({ onClose }: CorporateAdminDashb
     { id: 4, accountName: 'ghost_leads_llc', accountType: 'business', flagReason: 'Payment method flagged by Stripe fraud detection', severity: 'high', timestamp: '1 hour ago', trustScore: 8 },
     { id: 5, accountName: 'rapid_ref_mike', accountType: 'bungee', flagReason: 'Referral pattern anomaly - same customer submitted to 5 businesses', severity: 'medium', timestamp: '2 hours ago', trustScore: 35 },
   ])
+
+  // Compliance Vault — all signed legal documents across every account
+  const [signedDocs, setSignedDocs] = useState<SignedDocRecord[]>([])
+  const [docsLoading, setDocsLoading] = useState(false)
+  const [docsError, setDocsError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let cancelled = false
+    const loadDocs = async () => {
+      setDocsLoading(true)
+      setDocsError(null)
+      try {
+        const res = await fetch(`/api/admin/signed-documents?key=${encodeURIComponent(ADMIN_PASSWORD)}`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || "Failed to load compliance vault")
+        if (!cancelled) setSignedDocs(json.documents ?? [])
+      } catch (err) {
+        if (!cancelled) setDocsError(err instanceof Error ? err.message : "Failed to load compliance vault")
+      } finally {
+        if (!cancelled) setDocsLoading(false)
+      }
+    }
+    loadDocs()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated])
 
   // Simulate real-time metric updates
   useEffect(() => {
@@ -692,6 +735,107 @@ export default function CorporateAdminDashboard({ onClose }: CorporateAdminDashb
                     </div>
                   )
                 })}
+              </div>
+
+              {/* Compliance Vault — all signed legal documents across every account */}
+              <div className="mt-8 rounded-2xl overflow-hidden" style={{ backgroundColor: '#0D0D0D', border: '1px solid #1A1A1A' }}>
+                <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1A1A1A' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(255,107,0,0.1)' }}>
+                      <FileText className="size-5" style={{ color: '#FF6B00' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-white">Compliance Vault</h2>
+                      <p className="text-xs" style={{ color: '#666666' }}>Signed legal documents across all accounts</p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1.5 rounded-md text-xs font-bold font-mono" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: '#CCCCCC' }}>
+                    {(() => {
+                      const visible = signedDocs.filter((d) => filter === 'all' || d.audience === filter)
+                      return `${visible.length} ON FILE`
+                    })()}
+                  </span>
+                </div>
+
+                {docsLoading ? (
+                  <div className="px-5 py-10 text-center text-sm" style={{ color: '#666666' }}>Loading compliance records…</div>
+                ) : docsError ? (
+                  <div className="px-5 py-10 text-center text-sm" style={{ color: '#EF4444' }}>{docsError}</div>
+                ) : (() => {
+                  const visibleDocs = signedDocs.filter((d) => filter === 'all' || d.audience === filter)
+                  if (visibleDocs.length === 0) {
+                    return <div className="px-5 py-10 text-center text-sm" style={{ color: '#666666' }}>No signed documents on file yet.</div>
+                  }
+                  return (
+                    <>
+                      {/* Desktop Table */}
+                      <div className="hidden lg:block overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid #1A1A1A' }}>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Account</th>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Side</th>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Document</th>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Signed By</th>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Date</th>
+                              <th className="px-5 py-4 text-xs font-bold uppercase tracking-wider" style={{ color: '#555555' }}>Version</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleDocs.map((doc) => (
+                              <tr key={doc.id} style={{ borderBottom: '1px solid #1A1A1A' }} className="hover:bg-[#151515] transition-colors">
+                                <td className="px-5 py-4">
+                                  <div className="font-semibold text-white">{doc.account_name}</div>
+                                  {doc.account_email && <div className="text-xs font-mono" style={{ color: '#555555' }}>{doc.account_email}</div>}
+                                </td>
+                                <td className="px-5 py-4">
+                                  <span
+                                    className="px-3 py-1.5 rounded-md text-xs font-bold uppercase"
+                                    style={{
+                                      backgroundColor: doc.audience === 'business' ? 'rgba(255,107,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                      color: doc.audience === 'business' ? '#FF6B00' : '#CCCCCC',
+                                    }}
+                                  >
+                                    {doc.audience === 'business' ? 'MERCHANT' : 'BUNGEE'}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 text-sm text-white" style={{ maxWidth: '280px' }}>{doc.doc_title}</td>
+                                <td className="px-5 py-4 text-sm" style={{ color: '#999999' }}>{doc.signer_name}</td>
+                                <td className="px-5 py-4 text-sm" style={{ color: '#999999' }}>{new Date(doc.signed_at).toLocaleDateString()}</td>
+                                <td className="px-5 py-4 text-sm font-mono" style={{ color: '#555555' }}>{doc.doc_version}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile Cards */}
+                      <div className="lg:hidden divide-y" style={{ borderColor: '#1A1A1A' }}>
+                        {visibleDocs.map((doc) => (
+                          <div key={doc.id} className="p-4 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-white truncate">{doc.account_name}</span>
+                              <span
+                                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase shrink-0"
+                                style={{
+                                  backgroundColor: doc.audience === 'business' ? 'rgba(255,107,0,0.1)' : 'rgba(255,255,255,0.05)',
+                                  color: doc.audience === 'business' ? '#FF6B00' : '#CCCCCC',
+                                }}
+                              >
+                                {doc.audience === 'business' ? 'MERCHANT' : 'BUNGEE'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-white">{doc.doc_title}</p>
+                            <div className="flex items-center justify-between text-xs" style={{ color: '#555555' }}>
+                              <span>Signed by {doc.signer_name}</span>
+                              <span>{new Date(doc.signed_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             </>
           )}

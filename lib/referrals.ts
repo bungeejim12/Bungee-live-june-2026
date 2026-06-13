@@ -2,12 +2,20 @@ export function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 }
 
-export function buildInviteLink(referralCode: string) {
-  return `${getAppUrl()}/invite/${referralCode}`
+// Optional tracking tag that marks how the referred account should be classified.
+// `bungee` tags the new signup as a Bungee referrer so the 18-month residual
+// splits calculate against the correct side of the network.
+export type ReferralTrackTag = "bungee" | "business"
+
+export function buildInviteLink(referralCode: string, as?: ReferralTrackTag) {
+  const base = `${getAppUrl()}/invite/${referralCode}`
+  return as ? `${base}?as=${as}` : base
 }
 
-export function buildSignUpLink(referralCode: string) {
-  return `${getAppUrl()}/auth/sign-up?ref=${encodeURIComponent(referralCode)}`
+export function buildSignUpLink(referralCode: string, as?: ReferralTrackTag) {
+  const params = new URLSearchParams({ ref: referralCode })
+  if (as) params.set("as", as)
+  return `${getAppUrl()}/auth/sign-up?${params.toString()}`
 }
 
 export interface ReferrerInfo {

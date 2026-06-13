@@ -204,7 +204,7 @@ ${websiteUrl ? `Company: ${websiteUrl.replace(/https?:\/\/(www\.)?/, '').split('
 
 ---
 
-## 💼 THE OPPORTUNITY
+## �� THE OPPORTUNITY
 
 **Role:** ${jobTitle || 'Open Position'}
 **Location:** ${location || 'Contact for details'}
@@ -249,7 +249,7 @@ Know someone perfect for this role? Refer them through Bungee and earn!
   const handleImportContactMatrix = async () => {
     // Build daisy chain payload for hiring campaigns
     const payload: DaisyChainPayload = {
-      businessName: companyName || 'Your Company',
+      businessName: 'Your Company',
       title: jobTitle || 'Job Opportunity',
       bountyAmount: bountyAmount || '1,500',
       campaignType: 'hiring',

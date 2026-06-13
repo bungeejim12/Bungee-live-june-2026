@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { User, Video, Calendar, ShieldCheck, Award, CheckCircle2, Phone, Users, VideoIcon, MapPin, Eye, FileText, Check, AlertCircle, X, ChevronLeft, ChevronRight, Brain, MessageSquare, Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { VoiceTextarea as Textarea } from '@/components/voice-textarea';
 
 interface CandidateManagementWizardProps {
   onClose?: () => void;

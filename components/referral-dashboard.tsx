@@ -6,6 +6,9 @@ import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DocumentSignModal, type SignedRecord } from "@/components/document-sign-modal"
+import { BUNGEE_DOCUMENTS, type LegalDocument } from "@/lib/legal-documents"
+import { useSignedDocuments } from "@/hooks/use-signed-documents"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { BungeeCordIcon, CORD_COLORS } from "@/components/bungee-cord-icon"
@@ -70,6 +73,10 @@ import {
   ImageIcon,
   CheckCircle2,
   Clock,
+  Timer,
+  Store,
+  FileText,
+  AlertCircle,
 } from "lucide-react"
 import { BungeeRankSystem, RankBadge, BUNGEE_RANKS } from "@/components/bungee-rank-system"
 import { BusinessLocatorMap } from "@/components/business-locator-map"
@@ -94,6 +101,95 @@ import {
   type ReferralStats,
   type UserReferral,
 } from "@/lib/referrals"
+import { MyReferralsValidation } from "@/components/my-referrals-validation"
+import { ReferralEarnings } from "@/components/referral-earnings"
+import { demoReferredAccounts, RESIDUAL_TIERS } from "@/lib/payments"
+import { VerifiedBungeeBadge } from "@/components/validation-badges"
+import { demoValidatedReferrals, computeQualityScore } from "@/lib/validation"
+
+// Achievements & Badges System — grouped by category.
+// Each badge is either unlocked, or shows progress toward its target.
+const BADGE_CATEGORIES = [
+  {
+    category: "Speed & Momentum",
+    badges: [
+      {
+        id: "speed-demon",
+        title: "Speed Demon",
+        description: "Submitted 3 successful referrals in a single weekend.",
+        icon: Zap,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "first-strike",
+        title: "First Strike",
+        description: "Made a referral within 48 hours of joining Bungee.",
+        icon: Timer,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "on-fire",
+        title: "On Fire",
+        description: "Submitted a referral 3 weeks in a row.",
+        icon: Flame,
+        unlocked: false,
+        progress: { current: 2, target: 3 } as { current: number; target: number } | null,
+      },
+    ],
+  },
+  {
+    category: "Network Builder",
+    badges: [
+      {
+        id: "icebreaker",
+        title: "Icebreaker",
+        description: "Brought in your very first business to the platform.",
+        icon: Store,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "market-maker",
+        title: "Market Maker",
+        description: "Brought in a batch of 10 businesses.",
+        icon: Building2,
+        unlocked: false,
+        progress: { current: 7, target: 10 } as { current: number; target: number } | null,
+      },
+      {
+        id: "talent-scout",
+        title: "Talent Scout",
+        description: "Referred 5 new cords who registered on the app.",
+        icon: Users,
+        unlocked: false,
+        progress: { current: 3, target: 5 } as { current: number; target: number } | null,
+      },
+    ],
+  },
+  {
+    category: "Placement & Payday",
+    badges: [
+      {
+        id: "matchmaker",
+        title: "Matchmaker",
+        description: "Your referred candidate got hired by a business.",
+        icon: Briefcase,
+        unlocked: true,
+        progress: null as { current: number; target: number } | null,
+      },
+      {
+        id: "lightning-rod",
+        title: "Lightning Rod",
+        description: "Received your first instant payout via the Lightning Network.",
+        icon: Bitcoin,
+        unlocked: false,
+        progress: null as { current: number; target: number } | null,
+      },
+    ],
+  },
+]
 
 interface UserProfile {
   id: string
@@ -137,6 +233,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
   const [showBusinessLocator, setShowBusinessLocator] = useState(false)
   const [showReferModal, setShowReferModal] = useState<"business" | "bungee" | null>(null)
+  const [showReferMenu, setShowReferMenu] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(() => {
@@ -153,12 +250,23 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
   const [activeTab, setActiveTab] = useState("opportunities")
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [commandCenterOpen, setCommandCenterOpen] = useState(false)
-  const [commandCenterTab, setCommandCenterTab] = useState<"referrals" | "hiring" | "products" | "services">("referrals")
+  const [commandCenterTab, setCommandCenterTab] = useState<"referrals" | "hiring" | "productsServices">("referrals")
+  // Toggle within the merged "Products & Services" command-center tab
+  const [productServiceView, setProductServiceView] = useState<"products" | "services">("products")
   const [shareModalItem, setShareModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
   const [detailsModalItem, setDetailsModalItem] = useState<{type: 'job' | 'service' | 'product', item: any} | null>(null)
   const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [walletOpen, setWalletOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [showTaxVerification, setShowTaxVerification] = useState(false)
+
+  // Legal documents: review, sign, and track completion (Bungee referrer side)
+  const { documents: signedDocs, loading: signedDocsLoading, addLocal: addSignedDoc } = useSignedDocuments({ isDemo })
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocument | null>(null)
+  const signedKeys = new Set(signedDocs.map((d) => d.doc_key))
+  const handleDocSigned = (record: SignedRecord) => {
+    addSignedDoc({ ...record, audience: "bungee" })
+  }
   const [isTaxVerified, setIsTaxVerified] = useState(isDemo ? true : (userProfile?.tax_verified ?? false))
   const [referralList, setReferralList] = useState<UserReferral[]>([])
   const [isLoadingReferrals, setIsLoadingReferrals] = useState(false)
@@ -199,6 +307,10 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
   const userStats = isDemo ? demoStats : computeReferralStats(referralList)
 
+  // Quality Score / reputation derived from validated (conversion-based) referrals.
+  // Demo mode uses the seeded validation dataset.
+  const qualityScore = computeQualityScore(isDemo ? demoValidatedReferrals : [])
+
   const userName =
     user?.firstName ||
     userProfile?.first_name ||
@@ -213,17 +325,18 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
     bungee: referralCode || "XXXXXXXX",
   }
 
-  const inviteLink = referralCode ? buildInviteLink(referralCode) : ""
+  // Each side gets a tracking tag so the referred account is classified
+  // correctly in the database, ensuring the 18-month residual splits calculate
+  // against the right side of the network.
   const referralLinks = {
-    business: inviteLink || "https://justbungee.com/auth/sign-up",
-    bungee: inviteLink || "https://justbungee.com/auth/sign-up",
+    business: referralCode ? buildInviteLink(referralCode, "business") : "https://justbungee.com/auth/sign-up",
+    bungee: referralCode ? buildInviteLink(referralCode, "bungee") : "https://justbungee.com/auth/sign-up",
   }
   const userCode = referralCode || "XXXXXXXX"
   const commandCenterTabs = [
     { id: "referrals" as const, label: "Referrals", icon: Users, color: "text-[#FF8C00]", bgColor: "bg-[#FF8C00]", count: isDemo ? 5 : userStats.totalReferrals },
     { id: "hiring" as const, label: "Hiring", icon: Briefcase, color: "text-fuchsia-500", bgColor: "bg-fuchsia-500", count: isDemo ? 3 : 0 },
-    { id: "products" as const, label: "Products", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: isDemo ? 2 : 0 },
-    { id: "services" as const, label: "Services", icon: Shield, color: "text-emerald-500", bgColor: "bg-emerald-500", count: isDemo ? 4 : 0 },
+    { id: "productsServices" as const, label: "Products & Services", icon: ShoppingBag, color: "text-blue-500", bgColor: "bg-blue-500", count: isDemo ? 6 : 0 },
   ]
   const modalReferralCount =
     showReferModal === "business" ? userStats.businessReferrals : userStats.bungeeReferrals
@@ -260,7 +373,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         : "Join Me on BUNGEE - Earn Money Referring!"
       const body = showReferModal === "business"
         ? `Hey!\n\nI wanted to introduce you to BUNGEE - a platform that connects businesses with top talent and services through trusted referrals.\n\nUse my referral code: ${referralCodes[showReferModal]}\n\nOr sign up directly here: ${referralLinks[showReferModal]}\n\nLet me know if you have any questions!\n\n- ${userName}`
-        : `Hey!\n\nI've been using BUNGEE to earn extra income by referring businesses and people to opportunities. It's been great!\n\nJoin using my referral code: ${referralCodes[showReferModal]}\n\nOr sign up here: ${referralLinks[showReferModal]}\n\nWe both get bonuses when you sign up!\n\n- ${userName}`
+        : `Hey!\n\nI've been using BUNGEE to build a real residual income stream by referring businesses and people to opportunities. It's been great!\n\nJoin using my referral code: ${referralCodes[showReferModal]}\n\nOr sign up here: ${referralLinks[showReferModal]}\n\nRefer once, get paid for 18 months!\n\n- ${userName}`
       window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`)
     }
   }
@@ -407,6 +520,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userName}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Level {userStats.level}</p>
                   </div>
+                  {qualityScore.isVerifiedBungee && <VerifiedBungeeBadge size="sm" />}
                   {/* Current Chord Badge */}
                   <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/30">
                     <BungeeCordIcon color={CORD_COLORS.green} size={14} />
@@ -515,6 +629,15 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   <span className="text-xs sm:text-sm font-medium">Wallet</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isDarkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>$0</span>
                 </button>
+
+                {/* Settings Button */}
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 hover:border-gray-500 text-gray-200' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700'}`}
+                >
+                  <Settings className="size-4 text-gray-500" />
+                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Settings</span>
+                </button>
               </div>
               
               {/* Dark Mode Toggle - Right */}
@@ -595,7 +718,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                       onClick={() => setCommandCenterTab(tab.id)}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-all ${
                         commandCenterTab === tab.id
-                          ? `${tab.color} border-b-2 ${tab.id === 'referrals' ? 'border-[#FF8C00]' : tab.id === 'hiring' ? 'border-fuchsia-500' : tab.id === 'products' ? 'border-blue-500' : 'border-emerald-500'}`
+                          ? `${tab.color} border-b-2 ${tab.id === 'referrals' ? 'border-[#FF8C00]' : tab.id === 'hiring' ? 'border-fuchsia-500' : 'border-blue-500'}`
                           : isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
@@ -690,40 +813,75 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     </Button>
                   </div>
                 )}
-                {commandCenterTab === "products" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="size-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                      <ShoppingBag className="size-8 text-blue-500" />
+                {commandCenterTab === "productsServices" && (
+                  <div className="space-y-4">
+                    {/* Toggle switch between Products and Services */}
+                    <div className={`flex items-center p-1 rounded-xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                      <button
+                        onClick={() => setProductServiceView("products")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          productServiceView === "products"
+                            ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                            : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}
+                      >
+                        <ShoppingBag className="size-4" />
+                        Products
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white bg-blue-500">{isDemo ? 2 : 0}</span>
+                      </button>
+                      <button
+                        onClick={() => setProductServiceView("services")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          productServiceView === "services"
+                            ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                            : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}
+                      >
+                        <Shield className="size-4" />
+                        Services
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white bg-emerald-500">{isDemo ? 4 : 0}</span>
+                      </button>
                     </div>
-                    <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Product Referrals Yet</h3>
-                    <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Product referral opportunities from businesses will appear here once they join Bungee.
-                    </p>
-                    <Button 
-                      onClick={() => setShowBusinessLocator(true)}
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white"
-                    >
-                      <Building2 className="size-4 mr-2" />
-                      Recruit Businesses
-                    </Button>
-                  </div>
-                )}
-                {commandCenterTab === "services" && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="size-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-                      <Shield className="size-8 text-emerald-500" />
-                    </div>
-                    <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Service Referrals Yet</h3>
-                    <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Service opportunities will appear here when businesses on Bungee need referrals for their services.
-                    </p>
-                    <Button 
-                      onClick={() => setShowBusinessLocator(true)}
-                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white"
-                    >
-                      <Building2 className="size-4 mr-2" />
-                      Recruit Businesses
-                    </Button>
+
+                    {/* Products view */}
+                    {productServiceView === "products" && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="size-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+                          <ShoppingBag className="size-8 text-blue-500" />
+                        </div>
+                        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Product Referrals Yet</h3>
+                        <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Product referral opportunities from businesses will appear here once they join Bungee.
+                        </p>
+                        <Button 
+                          onClick={() => setShowBusinessLocator(true)}
+                          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90 text-white"
+                        >
+                          <Building2 className="size-4 mr-2" />
+                          Recruit Businesses
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Services view */}
+                    {productServiceView === "services" && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="size-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
+                          <Shield className="size-8 text-emerald-500" />
+                        </div>
+                        <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Service Referrals Yet</h3>
+                        <p className={`text-sm mb-4 max-w-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Service opportunities will appear here when businesses on Bungee need referrals for their services.
+                        </p>
+                        <Button 
+                          onClick={() => setShowBusinessLocator(true)}
+                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white"
+                        >
+                          <Building2 className="size-4 mr-2" />
+                          Recruit Businesses
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -740,34 +898,8 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <span className="text-[#FF8C00] font-semibold">Make referrals</span> and earn bounties
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  {/* Refer Services Card - Clean White */}
-                  <button 
-                    onClick={() => {
-                      setMainView("referrals")
-                      setActiveCategory("services")
-                    }}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500' : 'bg-white border-gray-200 hover:border-emerald-500'} hover:shadow-xl shadow-sm`}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img 
-                        src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
-                        alt="Home service professional"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    </div>
-                    <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Services</h3>
-                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Help friends find local pros and earn up to $1K per lead</p>
-                    </div>
-                    <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
-                      <Badge className="bg-emerald-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        15 Open
-                      </Badge>
-                    </div>
-                  </button>
-
-                  {/* Refer Products Card - Clean White */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  {/* Combined Products & Services Card */}
                   <button 
                     onClick={() => {
                       setMainView("referrals")
@@ -775,20 +907,25 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     }}
                     className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'} hover:shadow-xl shadow-sm`}
                   >
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div className="aspect-square w-full overflow-hidden grid grid-cols-2">
                       <img 
                         src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=300&fit=crop" 
                         alt="Product delivery packages"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
+                      <img 
+                        src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
+                        alt="Home service professional"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
                     </div>
                     <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Products</h3>
-                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Share favorite local products and claim cash bonuses</p>
+                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Products &amp; Services</h3>
+                      <p className={`text-[7px] sm:text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mt-0.5 line-clamp-2`}>Refer local products and pros, then toggle between them to earn rewards</p>
                     </div>
                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                       <Badge className="bg-blue-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        $25-500
+                        Refer &amp; Earn
                       </Badge>
                     </div>
                   </button>
@@ -865,6 +1002,23 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                       <div className="flex-1 text-left">
                         <h3 className={`text-sm sm:text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rewards</h3>
                         <p className={`text-[10px] sm:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>View and cash out your referral bounty balances</p>
+                      </div>
+                      <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} group-hover:text-[#FF8C00] transition-colors`} />
+                    </div>
+                  </button>
+
+                  {/* Referral Earnings Card - 18-month tiered residual income */}
+                  <button
+                    onClick={() => setMainView("earn")}
+                    className={`w-full group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-[#FF8C00]' : 'bg-white border-gray-200 hover:border-[#FF8C00]'} hover:shadow-xl shadow-sm`}
+                  >
+                    <div className="flex items-center p-3 sm:p-4 gap-3 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#FF8C00]/10 shadow-lg border border-[#FF8C00]/30">
+                        <DollarSign className="w-6 h-6 sm:w-7 sm:h-7 text-[#FF8C00]" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h3 className={`text-sm sm:text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Referral Earnings</h3>
+                        <p className={`text-[10px] sm:text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recurring residual income tiered over 18 months</p>
                       </div>
                       <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'} group-hover:text-[#FF8C00] transition-colors`} />
                     </div>
@@ -1171,49 +1325,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Browse and refer people from your network</p>
 
                 {/* Referral Category Cards - Premium Clean Design */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  {/* Refer Services Card - Clean White */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                  {/* Combined Products & Services Card */}
                   <button 
-                    onClick={() => setActiveCategory("services")}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${activeCategory === "services" ? `ring-2 ring-emerald-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500' : 'bg-white border-gray-200 hover:border-emerald-500'}`} hover:shadow-md`}
+                    onClick={() => setActiveCategory(productServiceView === "products" ? "igotguy" : "services")}
+                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${(activeCategory === "services" || activeCategory === "igotguy") ? `ring-2 ring-blue-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'}`} hover:shadow-md`}
                   >
-                    <div className="aspect-square w-full overflow-hidden">
+                    <div className="aspect-square w-full overflow-hidden grid grid-cols-2">
                       <img 
                         src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=300&h=300&fit=crop" 
                         alt="Home service professional"
-                        className={`w-full h-full object-cover ${activeCategory === "services" ? 'opacity-90' : ''} group-hover:scale-110 transition-transform duration-500`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
-                    </div>
-                    <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Services</h3>
-                      <p className="text-[8px] sm:text-xs text-emerald-600 font-medium">Up to $1K</p>
-                    </div>
-                    <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
-                      <Badge className="bg-emerald-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        15 Open
-                      </Badge>
-                    </div>
-                  </button>
-
-                  {/* Refer Products Card - Clean White */}
-                  <button 
-                    onClick={() => setActiveCategory("igotguy")}
-                    className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.98] ${activeCategory === "igotguy" ? `ring-2 ring-blue-500 shadow-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}` : `border ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-500'}`} hover:shadow-md`}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
                       <img 
                         src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=300&fit=crop" 
                         alt="Product delivery packages"
-                        className={`w-full h-full object-cover ${activeCategory === "igotguy" ? 'opacity-90' : ''} group-hover:scale-110 transition-transform duration-500`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     </div>
                     <div className={`p-2 sm:p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer Products</h3>
-                      <p className="text-[8px] sm:text-xs text-blue-600 font-medium">Product Rewards</p>
+                      <h3 className={`text-[10px] sm:text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Products &amp; Services</h3>
+                      <p className="text-[8px] sm:text-xs text-blue-600 font-medium">Up to $1K</p>
                     </div>
                     <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                       <Badge className="bg-blue-600 text-white border-0 text-[7px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 shadow-md">
-                        $25-500
+                        Refer &amp; Earn
                       </Badge>
                     </div>
                   </button>
@@ -1253,6 +1389,13 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </button>
                 </div>
               </div>
+
+              {/* Bungee Validation & Reputation - Quality Score, Trust Indicator, table */}
+              <MyReferralsValidation
+                referrals={demoValidatedReferrals}
+                isDarkMode={isDarkMode}
+                userName={userName}
+              />
             </div>
           )}
 
@@ -1268,45 +1411,17 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                 <span className="text-sm">Back to Dashboard</span>
               </button>
 
-                            <div className={`rounded-2xl p-4 border border-fuchsia-700/30 ${isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
-                <h2 className={`text-xl font-bold flex items-center gap-2 mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  <DollarSign className="size-6 text-fuchsia-700" />
-                  Earnings
+                            <div className={`rounded-2xl p-4 border border-[#FF8C00]/30 ${isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
+                <h2 className={`text-xl font-bold flex items-center gap-2 mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <DollarSign className="size-6 text-[#FF8C00]" />
+                  Referral Earnings
                 </h2>
-                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Track your earnings and payment history</p>
+                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Your recurring residual income, tiered over 18 months per referred account.
+                </p>
 
-                {/* Earnings Summary */}
-                <div className="bg-gradient-to-br from-fuchsia-700/20 to-purple-500/20 rounded-xl p-4 mb-4 border border-fuchsia-700/30">
-                  <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Earned</p>
-                  <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>$0.00</p>
-                  <p className="text-xs text-fuchsia-700 mt-1">Start referring to earn!</p>
-                </div>
-
-                {/* Earnings Breakdown */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-emerald-700">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Jobs</p>
-                  </div>
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-blue-700">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Services</p>
-                  </div>
-                  <div className={`rounded-xl p-3 text-center ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <p className="text-lg font-bold text-[#FF8C00]">$0</p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Products</p>
-                  </div>
-                </div>
-
-                {/* Payment History */}
-                <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <h3 className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment History</h3>
-                  <div className="text-center py-6">
-                    <DollarSign className="size-8 text-gray-400 mx-auto mb-2" />
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>No payments yet</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-500'}`}>Earnings will appear here</p>
-                  </div>
-                </div>
+                {/* 18-month tiered residual engine */}
+                <ReferralEarnings accounts={isDemo ? demoReferredAccounts : []} isDarkMode={isDarkMode} />
               </div>
             </div>
           )}
@@ -1392,34 +1507,103 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                     <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Log in daily and make referrals to build your streak!</p>
                   </div>
 
-                  {/* Achievements Section - WITH GAME IMAGES */}
+                  {/* Achievements & Badges System - Categorized */}
                   <div>
-                    <h3 className={`font-bold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      <Trophy className="size-5 text-yellow-500" />
-                      Achievements
-                    </h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { image: "/images/rewards/first-referral-badge.png", name: "First Referral", desc: "Make your first referral", pts: 50, color: "#3B82F6", glow: "rgba(59,130,246,0.5)" },
-                        { image: "/images/rewards/speed-demon-badge.png", name: "Speed Demon", desc: "3 referrals in one day", pts: 100, color: "#F59E0B", glow: "rgba(245,158,11,0.5)" },
-                        { image: "/images/rewards/rising-star-badge.png", name: "Rising Star", desc: "Reach Gray Cord", pts: 200, color: "#8B5CF6", glow: "rgba(139,92,246,0.5)" },
-                      ].map((achievement, i) => (
-                        <div 
-                          key={i}
-                          className={`relative rounded-2xl p-4 text-center border-2 transition-all hover:scale-105 cursor-pointer overflow-hidden ${isDarkMode ? 'bg-gray-900/80 border-gray-600 hover:border-gray-500' : 'bg-white border-gray-200 hover:border-gray-300'}`}
-                          style={{ boxShadow: `0 0 20px ${achievement.glow}` }}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/20" />
-                          <div className="relative">
-                            <img 
-                              src={achievement.image} 
-                              alt={achievement.name} 
-                              className="size-20 mx-auto object-contain mb-2"
-                              style={{ filter: `drop-shadow(0 0 12px ${achievement.glow})` }}
-                            />
-                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{achievement.name}</p>
-                            <p className="text-[10px] text-gray-400 mb-1">{achievement.desc}</p>
-                            <p className="text-sm font-black" style={{ color: achievement.color, textShadow: `0 0 10px ${achievement.glow}` }}>+{achievement.pts} pts</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className={`font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <Trophy className="size-5 text-yellow-500" />
+                        Achievements &amp; Badges
+                      </h3>
+                      {(() => {
+                        const allBadges = BADGE_CATEGORIES.flatMap((c) => c.badges)
+                        const unlockedCount = allBadges.filter((b) => b.unlocked).length
+                        return (
+                          <Badge className="bg-[#FF8C00] text-white border-0 text-xs">
+                            {unlockedCount}/{allBadges.length} Unlocked
+                          </Badge>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="space-y-5">
+                      {BADGE_CATEGORIES.map((category) => (
+                        <div key={category.category}>
+                          <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {category.category}
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {category.badges.map((badge) => {
+                              const BadgeIcon = badge.icon
+                              const isUnlocked = badge.unlocked
+                              return (
+                                <div
+                                  key={badge.id}
+                                  className={`relative rounded-2xl p-4 border transition-all overflow-hidden ${
+                                    isUnlocked ? 'hover:scale-[1.02]' : ''
+                                  } ${
+                                    isDarkMode
+                                      ? isUnlocked ? 'bg-gray-900/80 border-[#FF8C00]/40' : 'bg-gray-900/40 border-gray-700'
+                                      : isUnlocked ? 'bg-white border-[#FF8C00]/40' : 'bg-gray-50 border-gray-200'
+                                  }`}
+                                  style={isUnlocked ? { boxShadow: '0 0 16px rgba(255,140,0,0.18)' } : undefined}
+                                >
+                                  {/* Lock indicator for locked badges */}
+                                  {!isUnlocked && (
+                                    <div className={`absolute top-2 right-2 size-6 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                      <Lock className="size-3 text-gray-400" />
+                                    </div>
+                                  )}
+
+                                  {/* Icon medallion */}
+                                  <div
+                                    className={`size-12 rounded-xl flex items-center justify-center mb-3 ${
+                                      isUnlocked
+                                        ? 'bg-gradient-to-br from-[#FF8C00] to-orange-400'
+                                        : isDarkMode ? 'bg-gray-800' : 'bg-gray-200'
+                                    }`}
+                                    style={isUnlocked ? { boxShadow: '0 4px 12px rgba(255,140,0,0.35)' } : undefined}
+                                  >
+                                    <BadgeIcon className={`size-6 ${isUnlocked ? 'text-white' : 'text-gray-400'}`} />
+                                  </div>
+
+                                  <p className={`text-sm font-bold ${
+                                    isUnlocked
+                                      ? (isDarkMode ? 'text-white' : 'text-gray-900')
+                                      : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                                  }`}>
+                                    {badge.title}
+                                  </p>
+                                  <p className={`text-[11px] leading-snug mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                    {badge.description}
+                                  </p>
+
+                                  {/* Status: unlocked check or progress bar */}
+                                  {isUnlocked ? (
+                                    <div className="flex items-center gap-1 mt-2 text-emerald-500">
+                                      <CheckCircle2 className="size-3.5" />
+                                      <span className="text-[11px] font-semibold">Unlocked</span>
+                                    </div>
+                                  ) : badge.progress ? (
+                                    <div className="mt-2">
+                                      <div className={`h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
+                                        <div
+                                          className="h-full rounded-full bg-[#FF8C00] transition-all duration-500"
+                                          style={{ width: `${Math.min(100, Math.round((badge.progress.current / badge.progress.target) * 100))}%` }}
+                                        />
+                                      </div>
+                                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                        {badge.progress.current} / {badge.progress.target}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 mt-2 text-gray-400">
+                                      <Lock className="size-3" />
+                                      <span className="text-[11px] font-semibold">Locked</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         </div>
                       ))}
@@ -1816,7 +2000,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={() => setShareModalItem({type: 'job', item: job})}>I Got Someone</Button>
+                          <Button size="sm" className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={() => setShareModalItem({type: 'job', item: job})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'job', item: job})}>View Details</Button>
                         </div>
                       </div>
@@ -1853,6 +2037,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)] sm:max-h-[60vh]">
+                  {/* Products / Services Toggle */}
+                  <div className={`flex items-center p-1 rounded-xl mb-4 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                    <button
+                      onClick={() => setActiveCategory("igotguy")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        (activeCategory as string) === "igotguy"
+                          ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <ShoppingBag className="size-4" />
+                      Products
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("services")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        activeCategory === "services"
+                          ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <Shield className="size-4" />
+                      Services
+                    </button>
+                  </div>
                   {/* Bungee Map Button */}
                   <div className="mb-4 flex justify-center">
                     <button 
@@ -1890,7 +2099,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShareModalItem({type: 'service', item: service})}>I Got Someone</Button>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShareModalItem({type: 'service', item: service})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'service', item: service})}>View Details</Button>
                         </div>
                       </div>
@@ -1927,6 +2136,31 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-120px)] sm:max-h-[60vh]">
+                  {/* Products / Services Toggle */}
+                  <div className={`flex items-center p-1 rounded-xl mb-4 ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+                    <button
+                      onClick={() => setActiveCategory("igotguy")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        activeCategory === "igotguy"
+                          ? `${isDarkMode ? 'bg-gray-800 text-blue-400' : 'bg-white text-blue-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <ShoppingBag className="size-4" />
+                      Products
+                    </button>
+                    <button
+                      onClick={() => setActiveCategory("services")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                        (activeCategory as string) === "services"
+                          ? `${isDarkMode ? 'bg-gray-800 text-emerald-400' : 'bg-white text-emerald-600'} shadow-sm`
+                          : isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}
+                    >
+                      <Shield className="size-4" />
+                      Services
+                    </button>
+                  </div>
                   {/* Bungee Map Button */}
                   <div className="mb-4 flex justify-center">
                     <button 
@@ -1965,7 +2199,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShareModalItem({type: 'product', item: request})}>I Got Someone!</Button>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShareModalItem({type: 'product', item: request})}>Oh! I Know Someone!</Button>
                           <Button size="sm" className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" onClick={() => setDetailsModalItem({type: 'product', item: request})}>Details</Button>
                         </div>
                       </div>
@@ -2471,47 +2705,69 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
       {/* Referral Code Modal - Full Screen */}
       {showReferModal && (
-        <div className="fixed inset-0 z-50 bg-[#1F2937] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto">
           <div className="min-h-full flex flex-col">
             {/* Header */}
-            <div className={`sticky top-0 z-10 p-4 sm:p-6 ${showReferModal === "business" ? "bg-gradient-to-r from-[#FF8C00]/20 to-orange-900/20" : "bg-gradient-to-r from-emerald-900/20 to-emerald-900/20"} border-b border-gray-700`}>
+            <div className={`sticky top-0 z-10 p-4 sm:p-6 ${showReferModal === "business" ? "bg-gradient-to-r from-[#FF8C00]/15 to-orange-100" : "bg-gradient-to-r from-emerald-100 to-emerald-50"} border-b border-gray-200`}>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowReferModal(null)}
-                  className="p-2.5 rounded-full bg-gray-700/90 hover:bg-gray-600 transition-colors border border-gray-600"
+                  className="p-2.5 rounded-full bg-white hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm"
                 >
-                  <ArrowLeft className="size-5 text-white" />
+                  <ArrowLeft className="size-5 text-gray-700" />
                 </button>
-                <div className={`size-12 rounded-xl ${showReferModal === "business" ? "bg-[#FF8C00]/20" : "bg-emerald-700/20"} flex items-center justify-center`}>
+                <div className={`size-12 rounded-xl ${showReferModal === "business" ? "bg-[#FF8C00]/20" : "bg-emerald-500/20"} flex items-center justify-center`}>
                   {showReferModal === "business" ? (
                     <Building2 className="size-6 text-[#FF8C00]" />
                   ) : (
-                    <Users className="size-6 text-emerald-400" />
+                    <Users className="size-6 text-emerald-600" />
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">
+                  <h2 className="text-xl font-bold text-gray-900">
                     Refer a {showReferModal === "business" ? "Business" : "Bungee"}
                   </h2>
-                  <p className="text-sm text-gray-400">Share your unique code with others</p>
+                  <p className="text-sm text-gray-500">Share your unique code with others</p>
                 </div>
               </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 p-4 sm:p-6 space-y-5 max-w-md mx-auto w-full">
+              {/* Business Locator - only for business referrals */}
+              {showReferModal === "business" && (
+                <button
+                  onClick={() => {
+                    setShowReferModal(null)
+                    setShowBusinessLocator(true)
+                  }}
+                  className="w-full overflow-hidden rounded-2xl border border-[#FF8C00]/40 bg-white shadow-sm hover:shadow-md transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#FF8C00]/10 to-emerald-50">
+                    <div className="size-12 rounded-xl bg-[#FF8C00] flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <Target className="size-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-gray-900">Open Business Locator</h3>
+                      <p className="text-xs text-gray-600">AI scans every business in your zip radius. Orange = already on Bungee, green = recruit &amp; earn residual.</p>
+                    </div>
+                    <ChevronRight className="size-5 text-[#FF8C00] flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+              )}
+
               {/* Your Unique Code */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-2 block">Your Unique Referral Code</label>
+                <label className="text-xs font-medium text-gray-500 mb-2 block">Your Unique Referral Code</label>
                 <div className="flex items-center gap-2">
-                  <div className={`flex-1 px-4 py-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/30" : "bg-emerald-700/10 border border-emerald-700/30"}`}>
-                    <p className={`text-lg font-mono font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <div className={`flex-1 px-4 py-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/30" : "bg-emerald-500/10 border border-emerald-500/30"}`}>
+                    <p className={`text-lg font-mono font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                       {referralCodes[showReferModal]}
                     </p>
                   </div>
                   <Button 
                     onClick={handleCopyCode}
-                    className={`h-12 px-4 ${showReferModal === "business" ? "bg-[#FF8C00] hover:bg-[#E67E00]" : "bg-emerald-700 hover:bg-emerald-800"} text-white`}
+                    className={`h-12 px-4 ${showReferModal === "business" ? "bg-[#FF8C00] hover:bg-[#E67E00]" : "bg-emerald-600 hover:bg-emerald-700"} text-white`}
                   >
                     {copiedCode ? <Check className="size-5" /> : <Copy className="size-5" />}
                   </Button>
@@ -2520,57 +2776,54 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
 
               {/* Referral Link */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-2 block">Your Referral Link</label>
+                <label className="text-xs font-medium text-gray-500 mb-2 block">Your Referral Link</label>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 overflow-hidden">
-                    <p className="text-sm text-gray-300 truncate">{referralLinks[showReferModal]}</p>
+                  <div className="flex-1 px-3 py-2.5 rounded-lg bg-white border border-gray-200 overflow-hidden">
+                    <p className="text-sm text-gray-600 truncate">{referralLinks[showReferModal]}</p>
                   </div>
                   <Button 
                     onClick={handleCopyLink}
                     variant="outline"
-                    className="h-10 px-3 border-gray-700 bg-gray-700 hover:bg-gray-600 text-white"
+                    className="h-10 px-3 border-gray-200 bg-white hover:bg-gray-100 text-gray-700"
                   >
-                    {copiedLink ? <Check className="size-4 text-emerald-400" /> : <LinkIcon className="size-4" />}
+                    {copiedLink ? <Check className="size-4 text-emerald-600" /> : <LinkIcon className="size-4" />}
                   </Button>
                 </div>
               </div>
 
               {/* Share Options */}
               <div>
-                <label className="text-xs font-medium text-gray-400 mb-3 block">Share Via</label>
+                <label className="text-xs font-medium text-gray-500 mb-3 block">Share Via</label>
                 <div className="grid grid-cols-2 gap-3">
                   <Button 
                     onClick={handleShareSMS}
                     variant="outline" 
-                    className="h-14 flex-col gap-1 border-gray-700 bg-gray-800 hover:bg-gray-700 hover:border-blue-500"
+                    className="h-14 flex-col gap-1 border-gray-200 bg-white hover:bg-gray-50 hover:border-blue-500"
                   >
-                    <MessageSquare className="size-5 text-blue-400" />
-                    <span className="text-xs text-gray-300">Text Message</span>
+                    <MessageSquare className="size-5 text-blue-500" />
+                    <span className="text-xs text-gray-700">Text Message</span>
                   </Button>
                   <Button 
                     onClick={handleShareEmail}
                     variant="outline" 
-                    className="h-14 flex-col gap-1 border-gray-700 bg-gray-800 hover:bg-gray-700 hover:border-purple-500"
+                    className="h-14 flex-col gap-1 border-gray-200 bg-white hover:bg-gray-50 hover:border-purple-500"
                   >
-                    <Mail className="size-5 text-purple-400" />
-                    <span className="text-xs text-gray-300">Email</span>
+                    <Mail className="size-5 text-purple-500" />
+                    <span className="text-xs text-gray-700">Email</span>
                   </Button>
                 </div>
               </div>
 
-              {/* Bonus Info */}
-              <div className={`p-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/20" : "bg-emerald-700/10 border border-emerald-700/20"}`}>
+              {/* Residual Income Info — identical 18-month payout for users & businesses */}
+              <div className={`p-3 rounded-lg ${showReferModal === "business" ? "bg-[#FF8C00]/10 border border-[#FF8C00]/20" : "bg-emerald-500/10 border border-emerald-500/20"}`}>
                 <div className="flex items-start gap-2">
-                  <Gift className={`size-5 mt-0.5 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`} />
+                  <TrendingUp className={`size-5 mt-0.5 shrink-0 ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`} />
                   <div>
-                    <p className="text-sm font-semibold text-white">
-                      {showReferModal === "business" ? "Earn $500 per business!" : "Earn $50 + 10% of their earnings!"}
+                    <p className="text-sm font-semibold text-gray-900">
+                      Refer once, get paid for 18 months.
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {showReferModal === "business" 
-                        ? "Plus 5% residual income from all transactions for 18 months"
-                        : "Get residual income from their referrals for 18 months"
-                      }
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Earn a residual cut of the 30% service fee on every transaction: 10% (months 1-6), 6.5% (months 7-12), then 3% (months 13-18).
                     </p>
                   </div>
                 </div>
@@ -2579,16 +2832,16 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
               {/* Stats */}
               <div className="flex justify-center gap-6 pt-2">
                 <div className="text-center">
-                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                     {modalReferralCount}
                   </p>
-                  <p className="text-xs text-gray-400">Successful Referrals</p>
+                  <p className="text-xs text-gray-500">Successful Referrals</p>
                 </div>
                 <div className="text-center">
-                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-400"}`}>
+                  <p className={`text-2xl font-bold ${showReferModal === "business" ? "text-[#FF8C00]" : "text-emerald-600"}`}>
                     ${userStats.totalEarned.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-400">Total Earned</p>
+                  <p className="text-xs text-gray-500">Total Earned</p>
                 </div>
               </div>
             </div>
@@ -2892,33 +3145,113 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         </div>
       )}
 
-      {/* Bottom Action Bar - Three Circles with Icons */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)]`}>
-        <div className="flex items-start justify-around py-4 px-6 max-w-lg mx-auto">
-          {/* Refer User */}
-          <button 
-            onClick={() => setShowReferModal("bungee")}
-            className="flex flex-col items-center gap-1.5 group"
-          >
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all group-active:scale-95 animate-pulse-ring ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20`}>
-              <UserPlus className="w-6 h-6 text-[#FF8C00]" />
-            </div>
-            <span className="text-xs font-semibold text-[#FF8C00]">Refer User</span>
-            <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Earn 100 points per referral</span>
-          </button>
+      {/* Drop-up backdrop - closes menu on outside click */}
+      {showReferMenu && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+          onClick={() => setShowReferMenu(false)}
+        />
+      )}
 
-          {/* Refer Business */}
-          <button 
-            onClick={() => setShowReferModal("business")}
-            className="flex flex-col items-center gap-1.5 group"
-          >
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'} border-2 ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-              <Building2 className={`w-6 h-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+      {/* Bottom Action Bar - Reoccurring Revenue drop-up */}
+      <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)]`}>
+        <div className="relative max-w-lg mx-auto px-6 py-4">
+          {/* Drop-up panel - Residual Income Referral Hub */}
+          {showReferMenu && (
+            <div className="absolute bottom-full left-0 right-0 mb-3 px-2">
+              <div className={`rounded-2xl border overflow-hidden shadow-2xl ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                {/* Passive Income banner */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-[#FF8C00] to-[#FFB347] px-4 py-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="w-5 h-5 text-white shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-white leading-tight">Your Network is Your Net Worth</p>
+                      <p className="text-[11px] font-medium text-white/90 leading-tight">Refer once, get paid for 18 months.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Refer a User */}
+                <button
+                  onClick={() => {
+                    setShowReferMenu(false)
+                    setShowReferModal("bungee")
+                  }}
+                  className={`w-full flex items-center gap-4 p-4 text-left transition-colors ${isDarkMode ? 'hover:bg-gray-700/60' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/15 border-2 border-emerald-500">
+                    <UserPlus className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a User</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Unlock lifetime residual earnings on every transaction.</p>
+                  </div>
+                </button>
+
+                <div className={`h-px ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`} />
+
+                {/* Refer a Business */}
+                <button
+                  onClick={() => {
+                    setShowReferMenu(false)
+                    setShowReferModal("business")
+                  }}
+                  className={`w-full flex items-center gap-4 p-4 text-left transition-colors ${isDarkMode ? 'hover:bg-gray-700/60' : 'hover:bg-gray-50'}`}
+                >
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-[#FF8C00]/15 border-2 border-[#FF8C00]">
+                    <Building2 className="w-6 h-6 text-[#FF8C00]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Refer a Business</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Build your empire with recurring commissions on every job posted.</p>
+                  </div>
+                </button>
+
+                {/* Shared 18-month residual schedule */}
+                <div className={`px-4 py-3 ${isDarkMode ? 'bg-gray-900/50 border-t border-gray-700' : 'bg-gray-50 border-t border-gray-100'}`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Your 18-month residual payout
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {RESIDUAL_TIERS.map((tier) => (
+                      <div
+                        key={tier.label}
+                        className={`rounded-lg px-2 py-2 text-center ${isDarkMode ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}
+                      >
+                        <p className="text-base font-extrabold text-[#FF8C00] leading-none">
+                          {Math.round(tier.rate * 1000) / 10}%
+                        </p>
+                        <p className={`text-[9px] mt-1 leading-tight ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {tier.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`text-[10px] mt-2 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Commission on the 30% service fee — same payout whether you refer a user or a business.
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Refer Biz</span>
-            <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Earn 100 points per referral</span>
+          )}
+
+          {/* Recurring Revenue tab — neutral, professional styling */}
+          <button
+            onClick={() => setShowReferMenu((prev) => !prev)}
+            aria-expanded={showReferMenu}
+            className={`relative w-full flex items-center justify-center gap-2 rounded-xl border py-3.5 px-6 font-semibold transition-all active:scale-[0.99] ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-gray-100 hover:bg-gray-700/70 hover:border-gray-600'
+                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+            }`}
+          >
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/15">
+              <Banknote className="w-4 h-4 text-emerald-600" />
+            </span>
+            <span className="text-sm"><span className="font-bold text-emerald-600">Recurring Cash</span> — Check Your Lifetime Earnings</span>
+            <ChevronUp className={`w-4 h-4 transition-transform text-gray-400 ${showReferMenu ? '' : 'rotate-180'}`} />
           </button>
-      </div>
+        </div>
       </div>
 
       {/* Floating Ask Bungee Button - Draggable, positions itself */}
@@ -2931,7 +3264,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         }}
       />
 
-      {/* Share Modal - I Got Someone */}
+          {/* Share Modal - Oh! I Know Someone! */}
       {shareModalItem && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -3208,7 +3541,7 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
                   } text-white`}
                 >
                   <Share2 className="size-4 mr-2" />
-                  I Got Someone
+                  Oh! I Know Someone!
                 </Button>
                 <Button 
                   variant="outline"
@@ -3234,6 +3567,149 @@ export default function ReferralDashboard({ onViewChange, currentView = "referra
         userId={userProfile?.id || user?.id || ''}
         isDarkMode={isDarkMode}
         pendingAmount="$0.00"
+      />
+
+      {/* Settings Modal — Legal & Agreements */}
+      {settingsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            className={`relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`p-5 border-b flex items-center justify-between ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
+                  <Settings className="size-5" />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h2>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Legal &amp; Agreements</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1">
+              <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Review and sign Bungee&apos;s ground rules, terms, and agreements. Completed documents are stored here and
+                a copy is sent to the Bungee compliance team. These confirm you are an independent referrer, not an
+                employee of Bungee.
+              </p>
+
+              <div className="space-y-3">
+                {BUNGEE_DOCUMENTS.map((doc) => {
+                  const isSigned = signedKeys.has(doc.key)
+                  const signedRecord = signedDocs.find((d) => d.doc_key === doc.key)
+                  return (
+                    <div
+                      key={doc.key}
+                      className={`p-4 rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${
+                              isSigned ? 'bg-emerald-500/15 text-emerald-500' : 'bg-red-500/15 text-red-400'
+                            }`}
+                          >
+                            {isSigned ? <CheckCircle2 className="size-5" /> : <FileText className="size-5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {doc.title}
+                            </h4>
+                            <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {doc.summary}
+                            </p>
+                          </div>
+                        </div>
+                        {isSigned ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shrink-0">
+                            Completed
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 shrink-0">Not Signed</Badge>
+                        )}
+                      </div>
+                      {isSigned && signedRecord ? (
+                        <p className={`mt-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Signed by {signedRecord.signer_name} on {new Date(signedRecord.signed_at).toLocaleDateString()} ·{' '}
+                          {doc.version}
+                        </p>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => setActiveLegalDoc(doc)}
+                          className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00] text-white"
+                        >
+                          Review &amp; Sign
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Status summary */}
+              {(() => {
+                const signedCount = BUNGEE_DOCUMENTS.filter((d) => signedKeys.has(d.key)).length
+                const remaining = BUNGEE_DOCUMENTS.length - signedCount
+                if (signedDocsLoading) {
+                  return (
+                    <div className={`mt-5 p-4 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading your documents…</p>
+                    </div>
+                  )
+                }
+                if (remaining === 0) {
+                  return (
+                    <div className="mt-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-5" />
+                        <span className="text-sm font-semibold">All agreements signed</span>
+                      </div>
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Your agreements are complete and on file with Bungee compliance.
+                      </p>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="mt-5 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="size-5" />
+                      <span className="text-sm font-semibold">
+                        {remaining} agreement{remaining === 1 ? '' : 's'} to review
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Sign all agreements to keep your Bungee account in good standing.
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legal document review & sign modal */}
+      <DocumentSignModal
+        document={activeLegalDoc}
+        open={activeLegalDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveLegalDoc(null)
+        }}
+        onSigned={handleDocSigned}
+        isDemo={isDemo}
       />
 
     </div>

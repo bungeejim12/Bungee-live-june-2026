@@ -34,6 +34,7 @@ interface ProfileRoleSwitcherProps {
   onModeChange?: (mode: WorkspaceMode) => void
   businessName?: string
   userName?: string
+  avatarUrl?: string
   className?: string
 }
 
@@ -42,6 +43,7 @@ export function ProfileRoleSwitcher({
   onModeChange,
   businessName = "ABC Company",
   userName = "John Doe",
+  avatarUrl,
   className = "",
 }: ProfileRoleSwitcherProps) {
   const [mode, setMode] = useState<WorkspaceMode>(currentMode)
@@ -88,13 +90,16 @@ export function ProfileRoleSwitcher({
               className="w-full justify-between h-auto py-3 px-4 border-2 border-gray-200 hover:border-[#FF8C00]/50 hover:bg-[#FF8C00]/5 transition-all rounded-xl group"
             >
               <div className="flex items-center gap-3">
-                <div className={`size-10 rounded-xl flex items-center justify-center transition-colors ${
+                <div className={`size-10 rounded-xl flex items-center justify-center transition-colors overflow-hidden ${
                   isMerchant 
                     ? "bg-[#FF8C00]/10 text-[#FF8C00]" 
                     : "bg-emerald-100 text-emerald-600"
                 }`}>
                   {isMerchant ? (
                     <Building2 className="size-5" />
+                  ) : avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt={`${userName} avatar`} className="size-full object-cover" />
                   ) : (
                     <User className="size-5" />
                   )}

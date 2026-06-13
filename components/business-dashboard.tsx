@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,11 +18,21 @@ import {
 import { SponsorCarousel } from "@/components/sponsor-carousel"
 import ServiceBountyWizard from "@/components/service-bounty-wizard"
 import ProductBountyWizard from "@/components/product-bounty-wizard"
+import { DocumentSignModal, type SignedRecord } from "@/components/document-sign-modal"
+import { BUSINESS_DOCUMENTS, type LegalDocument } from "@/lib/legal-documents"
+import { useSignedDocuments } from "@/hooks/use-signed-documents"
+import ProductsServicesWizard from "@/components/products-services-wizard"
 import BountyCreationPage from "@/components/bounty-creation-page"
 import BusinessVerificationModal from "@/components/business-verification-modal"
 import CandidateManagementWizard from "@/components/candidate-management-wizard"
-import JobOrderWizard from "@/components/job-order-wizard"
+import AiJobWizard, { type CreatedJobOrder } from "@/components/ai-job-wizard"
 import { AskBungeeChat } from "@/components/ask-bungee-chat"
+import BusinessAnalytics from "@/components/business-analytics"
+import { LeadValidationPanel } from "@/components/lead-validation-panel"
+import { TransactionSummary } from "@/components/transaction-summary"
+import { demoIncomingLeads, getReferrerFromName } from "@/lib/validation"
+import { ReferrerBadge } from "@/components/referrer-badge"
+import { BungeeCordIcon, CORD_COLORS } from "@/components/bungee-cord-icon"
 import { Switch } from "@/components/ui/switch"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
@@ -50,6 +61,7 @@ import {
   Camera,
   Upload,
   Sparkles,
+  Loader2,
   MapPin,
   Tag,
   Image,
@@ -135,6 +147,17 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [uploadedLogo, setUploadedLogo] = useState<string | null>(null)
   const [showWalletModal, setShowWalletModal] = useState(false)
+  // Payout method preferences shown in the Wallet
+  const [cryptoPayoutEnabled, setCryptoPayoutEnabled] = useState(false)
+  const [cashPayoutEnabled, setCashPayoutEnabled] = useState(true)
+
+  // Legal documents: review, sign, and track completion
+  const { documents: signedDocs, loading: signedDocsLoading, addLocal: addSignedDoc } = useSignedDocuments({ isDemo })
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocument | null>(null)
+  const signedKeys = new Set(signedDocs.map((d) => d.doc_key))
+  const handleDocSigned = (record: SignedRecord) => {
+    addSignedDoc({ ...record, audience: "business" })
+  }
 
   // Toggle candidate expansion
   const toggleCandidate = (candidateId: string) => {
@@ -217,21 +240,60 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
       ]
     }
   ] : []
+  // Service / lead-generation referral activity (shared by Activity Center + Campaigns view)
+  const serviceLeadsData = isDemo ? [
+    { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
+    { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
+    { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
+    { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
+    { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
+  ] : []
+  // Product-sale referral activity (shared by Activity Center + Campaigns view)
+  const productSalesData = isDemo ? [
+    { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
+    { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
+    { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
+    { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
+    { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
+  ] : []
   // Notifications - empty for new users, sample data only in demo mode
   const [notifications] = useState(isDemo ? [
     { id: 1, type: "referral", message: "New referral from Marcus T.", time: "Just now", unread: true },
     { id: 2, type: "order", message: "New order received", time: "5 min ago", unread: true },
     { id: 3, type: "bounty", message: "Bounty payment processed", time: "1 hour ago", unread: false },
   ] : [])
-  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "referrals" | "orders" | "bounties" | "invoices" | null>(null)
+  const [activeTab, setActiveTab] = useState<"hire" | "marketplace" | "services" | "products" | "productsServices" | "referrals" | "orders" | "bounties" | "invoices" | "campaigns" | "analytics" | null>(null)
   const [showBungeeBlast, setShowBungeeBlast] = useState(false)
   const [showVeteranPool, setShowVeteranPool] = useState(false)
   const [showBungeePool, setShowBungeePool] = useState(false)
   const [showProRecruit, setShowProRecruit] = useState(false)
+  // Guard so body portals (which escape the hidden tab container) only run on the client.
+  const [isMounted, setIsMounted] = useState(false)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
   const [showSelfHire, setShowSelfHire] = useState(false)
   const [showCandidateWizard, setShowCandidateWizard] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null)
   const [showJobOrderWizard, setShowJobOrderWizard] = useState(false)
+  // Job orders the business routed to the Pro-Bungee recruiter desk (mirrored from the wizard).
+  const [proRecruiterOrders, setProRecruiterOrders] = useState<
+    { title: string; compensation: string; workModel: string; bounty: string; createdAt: number }[]
+  >([])
+  // When the wizard finishes, mirror any pro-recruiter-routed order into Managed Recruiting.
+  const handleJobOrderCreated = (order: CreatedJobOrder) => {
+    if (!order.sendToProRecruiters) return
+    setProRecruiterOrders((prev) => [
+      {
+        title: order.title,
+        compensation: order.compensation,
+        workModel: order.workModel,
+        bounty: order.bounty,
+        createdAt: Date.now(),
+      },
+      ...prev,
+    ])
+  }
   const [showBusinessInfo, setShowBusinessInfo] = useState(false)
   const [showOpenPositions, setShowOpenPositions] = useState(false)
   const [showMarketplaceListings, setShowMarketplaceListings] = useState(false)
@@ -370,8 +432,35 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
     address: "",
     phone: "",
     website: "",
-    email: ""
+    email: "",
+    bio: ""
   })
+  // AI auto-fill state for the settings modal
+  const [isAutoFilling, setIsAutoFilling] = useState(false)
+  const handleAutoFill = () => {
+    if (!businessInfo.website.trim() || isAutoFilling) return
+    setIsAutoFilling(true)
+    // Simulated AI lookup based on the provided URL.
+    setTimeout(() => {
+      let host = businessInfo.website.trim()
+      try {
+        host = new URL(host.startsWith("http") ? host : `https://${host}`).hostname.replace(/^www\./, "")
+      } catch {
+        host = host.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0]
+      }
+      const brand = (host.split(".")[0] || "Your Business")
+        .replace(/[-_]/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+      setBusinessInfo((prev) => ({
+        ...prev,
+        name: brand,
+        address: "500 Market Street, San Francisco, CA 94105",
+        phone: "(415) 555-0182",
+        bio: prev.bio || `${brand} delivers trusted, high-quality offerings to its local community. Bungees can confidently refer ${brand} to customers looking for reliable service and great value.`,
+      }))
+      setIsAutoFilling(false)
+    }, 1600)
+  }
   // Empty state for new users
   const [referralActivity, setReferralActivity] = useState<any[]>([])
 
@@ -386,13 +475,22 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
   return (
     <>
+    {/* Products & Services full-screen wizard (own header + back arrow) */}
+    {activeTab === "productsServices" && (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <ProductsServicesWizard onClose={() => setActiveTab(null)} />
+      </div>
+    )}
+
     {/* Full Page Tab Views */}
-    {activeTab && (
+    {activeTab && activeTab !== "productsServices" && (
       <div className={`fixed inset-0 z-50 overflow-y-auto ${
         activeTab === "hire" || activeTab === "referrals" ? "bg-gradient-to-br from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/30 dark:to-pink-950/30" :
         activeTab === "services" || activeTab === "marketplace" ? "bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30" :
         activeTab === "orders" ? "bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/30" :
         activeTab === "bounties" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
+        activeTab === "campaigns" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
+        activeTab === "analytics" ? "bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30" :
         "bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30"
       }`}>
         {/* Header - Clean White Minimalist */}
@@ -414,6 +512,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "referrals" && "Applicant Tracking"}
                   {activeTab === "orders" && "Orders"}
                   {activeTab === "bounties" && "Active Campaigns"}
+                  {activeTab === "campaigns" && "Campaigns"}
+                  {activeTab === "analytics" && "Analytics"}
                   {activeTab === "invoices" && "Invoices"}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -424,6 +524,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {activeTab === "referrals" && "Manage referred candidates"}
                   {activeTab === "orders" && "Track customer orders"}
                   {activeTab === "bounties" && "Your active referral campaigns"}
+                  {activeTab === "campaigns" && "All your referral activity in one place"}
+                  {activeTab === "analytics" && "Track your referral performance"}
                   {activeTab === "invoices" && "Payment history"}
                 </p>
               </div>
@@ -457,8 +559,13 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
           {activeTab === "hire" && (
             <div className="animate-in fade-in duration-300">
               {showJobOrderWizard ? (
-                /* Show Job Order Wizard directly */
-                <JobOrderWizard onClose={() => setShowJobOrderWizard(false)} />
+                /* Show conversational AI Job Wizard directly */
+                <AiJobWizard
+                  onClose={() => setShowJobOrderWizard(false)}
+                  business={{ businessName: userProfile?.business_name || businessName }}
+                  isDemo={isDemo}
+                  onJobOrderCreated={handleJobOrderCreated}
+                />
               ) : (
                 /* Show hiring options */
                 <div className="space-y-6">
@@ -557,8 +664,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             />
                           </div>
                           <div className="text-left">
-                            <h4 className="font-bold text-gray-900 dark:text-white text-lg">General Talent Pool</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Access Bungee&apos;s referral network</p>
+                            <h4 className="font-bold text-gray-900 dark:text-white text-lg">Bungee Pool</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Silver &amp; Gold medalists from passed searches</p>
                             <Badge className="mt-1 bg-amber-50 text-gray-800 border-2 border-[#FF8C00] text-xs font-semibold shadow-sm">Network Verified</Badge>
                           </div>
                         </div>
@@ -815,6 +922,181 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           )}
+
+          {/* Analytics Tab Full Page */}
+          {activeTab === "analytics" && (
+            <BusinessAnalytics isDemo={isDemo} />
+          )}
+
+          {/* Campaigns Tab Full Page - aggregated referral activity */}
+          {activeTab === "campaigns" && (() => {
+            const openInActivityCenter = (itemKey: string) => {
+              setExpandedCommandItem(itemKey)
+              setIsCommandCenterOpen(true)
+              setActiveTab(null)
+            }
+            const confirmedSales = productSalesData.filter(s => s.stage === "Sale Confirmed")
+            const totalSalesValue = confirmedSales.reduce((sum, s) => sum + Number.parseFloat(s.amount.replace(/[$,]/g, "")), 0)
+            const totalLeadBounties = serviceLeadsData.reduce((sum, l) => sum + Number.parseFloat(l.bounty.replace(/[$,]/g, "")), 0)
+            return (
+              <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-300">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-[#FF8C00]">{hiringCandidates.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Active Candidates</p>
+                  </div>
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-600">{serviceLeadsData.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Open Leads</p>
+                  </div>
+                  <div className="p-3 sm:p-4 rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 text-center">
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">{confirmedSales.length}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5">Confirmed Sales</p>
+                  </div>
+                </div>
+
+                {/* Bungee Validation — owner controls for inbound referral quality */}
+                <LeadValidationPanel initialLeads={demoIncomingLeads} />
+
+                {/* Contingent payment breakdown — worker payment + 30% service fee */}
+                <TransactionSummary />
+
+                {/* Hiring Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                      <Users className="size-4 text-[#FF8C00]" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Hiring Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">Candidates moving through your pipeline</p>
+                    </div>
+                    <Badge className="bg-orange-50 dark:bg-orange-900/20 text-[#FF8C00] border-orange-200 dark:border-orange-800 text-[10px] sm:text-xs font-semibold">{hiringCandidates.length} Active</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {hiringCandidates.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No active hiring campaigns yet.</p>
+                    )}
+                    {hiringCandidates.map(cand => (
+                      <button
+                        key={cand.id}
+                        onClick={() => openInActivityCenter(`candidate-${cand.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-orange-50/60 dark:hover:bg-orange-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-[#FF8C00] font-bold shrink-0">
+                          {cand.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{cand.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{cand.role}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Badge className="bg-orange-50 dark:bg-orange-900/20 text-[#FF8C00] border-orange-200 dark:border-orange-800 text-[10px] font-medium">
+                            {cand.score ? `Round ${cand.currentStep}: ${cand.score}%` : "Video Pending"}
+                          </Badge>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{cand.lastActivity}</p>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Service / Lead Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                      <Briefcase className="size-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Service Lead Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">${totalLeadBounties.toLocaleString()} in referral bounties at stake</p>
+                    </div>
+                    <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800 text-[10px] sm:text-xs font-semibold">{serviceLeadsData.length} Open</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {serviceLeadsData.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No service lead campaigns yet.</p>
+                    )}
+                    {serviceLeadsData.map(lead => (
+                      <button
+                        key={lead.id}
+                        onClick={() => openInActivityCenter(`lead-${lead.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-emerald-50/60 dark:hover:bg-emerald-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-bold shrink-0">
+                          {lead.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{lead.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{lead.service} · {lead.company}</p>
+                          {/* Referring Bungee — avatar + cord rank */}
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-[#FF8C00] shrink-0">Via Bungee</span>
+                            <ReferrerBadge referrer={getReferrerFromName(lead.referredBy)} />
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono font-semibold text-xs text-emerald-600">{lead.bounty}</span>
+                          <p className="text-[10px] text-gray-400 mt-0.5">{lead.stage}</p>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Product Sale Campaigns */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                  <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                      <ShoppingBag className="size-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">Product Sale Campaigns</h3>
+                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">${totalSalesValue.toLocaleString()} in confirmed referred sales</p>
+                    </div>
+                    <Badge className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800 text-[10px] sm:text-xs font-semibold">{productSalesData.length} Logs</Badge>
+                  </div>
+                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {productSalesData.length === 0 && (
+                      <p className="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No product sale campaigns yet.</p>
+                    )}
+                    {productSalesData.map(sale => (
+                      <button
+                        key={sale.id}
+                        onClick={() => openInActivityCenter(`sale-${sale.id}`)}
+                        className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-blue-50/60 dark:hover:bg-blue-900/10 transition-colors"
+                      >
+                        <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                          {sale.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{sale.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{sale.item}</p>
+                          {/* Referring Bungee — avatar + cord rank */}
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-[#FF8C00] shrink-0">Via Bungee</span>
+                            <ReferrerBadge referrer={getReferrerFromName(sale.referredBy)} />
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-semibold text-xs text-gray-900 dark:text-white">{sale.amount}</span>
+                          <Badge className={`block mt-0.5 text-[9px] font-medium border ${
+                            sale.stage === "Sale Confirmed"
+                              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800"
+                              : "bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800"
+                          }`}>{sale.stage}</Badge>
+                        </div>
+                        <ChevronRight className="size-4 text-gray-300 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Bounties Tab Full Page */}
           {activeTab === "bounties" && (
@@ -1390,13 +1672,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       <Badge className="text-[8px] sm:text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800 font-medium">5 Open</Badge>
                     </div>
                     <div className="p-2 sm:p-2.5 flex-1 overflow-y-auto space-y-2 sm:space-y-2.5">
-                      {[
-                        { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
-                        { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
-                        { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
-                        { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
-                        { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
-                      ].map(lead => (
+                      {serviceLeadsData.map(lead => (
                         <button 
                           key={lead.id}
                           onClick={() => setExpandedCommandItem(`lead-${lead.id}`)}
@@ -1407,6 +1683,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <span className="font-mono font-semibold text-[9px] sm:text-[11px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 px-1.5 rounded border border-emerald-200 dark:border-emerald-800">{lead.bounty}</span>
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-[9px] sm:text-xs truncate">{lead.company}</p>
+                          {(() => { const r = getReferrerFromName(lead.referredBy); return (
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <BungeeCordIcon color={CORD_COLORS[r.cord]} size={7} />
+                              <span className="text-[8px] sm:text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                {r.name} · <span className="font-semibold" style={{ color: CORD_COLORS[r.cord] }}>{r.rankName} Lvl {r.level}</span>
+                              </span>
+                            </div>
+                          )})()}
                           <div className="flex items-center justify-between pt-1.5">
                             <Badge className={`text-[8px] sm:text-[10px] font-medium border px-2 py-0.5 ${
                               lead.stage === 'New Referral' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 border-amber-200 dark:border-amber-800' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800'
@@ -1432,13 +1716,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       <Badge className="text-[8px] sm:text-[10px] bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-200 dark:border-blue-800 font-medium">5 Logs</Badge>
                     </div>
                     <div className="p-1.5 sm:p-2 flex-1 overflow-y-auto space-y-1.5 sm:space-y-2">
-                      {[
-                        { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
-                        { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
-                        { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
-                        { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
-                        { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
-                      ].map(sale => (
+                      {productSalesData.map(sale => (
                         <button 
                           key={sale.id}
                           onClick={() => setExpandedCommandItem(`sale-${sale.id}`)}
@@ -1449,6 +1727,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <span className="text-[7px] sm:text-[9px] font-mono text-gray-500 bg-gray-100 dark:bg-gray-700 px-1 rounded border border-gray-200 dark:border-gray-600">{sale.trackingCode}</span>
                           </div>
                           <p className="text-gray-500 dark:text-gray-400 text-[8px] sm:text-[11px] truncate">Item: {sale.item}</p>
+                          {(() => { const r = getReferrerFromName(sale.referredBy); return (
+                            <div className="flex items-center gap-1 pt-0.5">
+                              <BungeeCordIcon color={CORD_COLORS[r.cord]} size={7} />
+                              <span className="text-[7px] sm:text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                {r.name} · <span className="font-semibold" style={{ color: CORD_COLORS[r.cord] }}>{r.rankName} Lvl {r.level}</span>
+                              </span>
+                            </div>
+                          )})()}
                           <div className="flex items-center justify-between pt-1">
                             <Badge className={`text-[7px] sm:text-[9px] font-medium border px-1.5 py-0 ${
                               sale.stage === 'Sale Confirmed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800'
@@ -1871,13 +2157,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {/* Lead Detail Dashboard */}
                   {expandedCommandItem.startsWith('lead-') && (() => {
                     const leadId = expandedCommandItem.replace('lead-', '')
-                    const leadData = [
-                      { id: 's1', name: 'Robert Vance', company: 'Vance Refrigeration', stage: 'New Referral', bounty: '$150', phone: '(555) 123-4567', email: 'rvance@vancerefrig.com', service: 'HVAC Installation', referredBy: 'Phyllis Lapin' },
-                      { id: 's2', name: 'Michael Scott', company: 'Dunder Mifflin', stage: 'Contacted', bounty: '$150', phone: '(555) 987-6543', email: 'mscott@dundermifflin.com', service: 'Paper Supply Contract', referredBy: 'Jan Levinson' },
-                      { id: 's3', name: 'Angela Martin', company: 'Martin Pet Supplies', stage: 'Quoted', bounty: '$200', phone: '(555) 222-3333', email: 'amartin@martinpets.com', service: 'Bulk Pet Food Order', referredBy: 'Dwight Schrute' },
-                      { id: 's4', name: 'Stanley Hudson', company: 'Hudson Crosswords LLC', stage: 'New Referral', bounty: '$75', phone: '(555) 444-5555', email: 'shudson@crosswords.com', service: 'Print Services', referredBy: 'Kevin Malone' },
-                      { id: 's5', name: 'Andy Bernard', company: 'Bernard Boat Rentals', stage: 'Contacted', bounty: '$300', phone: '(555) 666-7777', email: 'abernard@boatrentals.com', service: 'Fleet Maintenance', referredBy: 'Erin Hannon' }
-                    ].find(l => l.id === leadId)
+                    const leadData = serviceLeadsData.find(l => l.id === leadId)
                     if (!leadData) return null
                     return (
                       <div className="space-y-3 sm:space-y-4">
@@ -1916,8 +2196,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{leadData.service}</p>
                           </div>
                           <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Referred By</p>
-                            <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{leadData.referredBy}</p>
+                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1.5">Referred By Bungee</p>
+                            <ReferrerBadge referrer={getReferrerFromName(leadData.referredBy)} />
                           </div>
                         </div>
 
@@ -1975,13 +2255,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   {/* Sale Detail Dashboard */}
                   {expandedCommandItem.startsWith('sale-') && (() => {
                     const saleId = expandedCommandItem.replace('sale-', '')
-                    const saleData = [
-                      { id: 'p1', name: 'Pam Beesly', item: 'Ergonomic Desk Chair', stage: 'Sale Confirmed', trackingCode: 'BUNG-DESK-09', email: 'pbeesly@email.com', phone: '(555) 234-5678', referredBy: 'Jim Halpert', amount: '$299.99' },
-                      { id: 'p2', name: 'Kevin Malone', item: 'Hydration Powder Bulk', stage: 'Cart Abandoned', trackingCode: 'BUNG-HYDR-44', email: 'kmalone@email.com', phone: '(555) 345-6789', referredBy: 'Oscar Martinez', amount: '$89.99' },
-                      { id: 'p3', name: 'Creed Bratton', item: 'Vintage Office Supplies', stage: 'Sale Confirmed', trackingCode: 'BUNG-VINT-22', email: 'cbratton@email.com', phone: '(555) 111-2222', referredBy: 'Meredith Palmer', amount: '$45.00' },
-                      { id: 'p4', name: 'Ryan Howard', item: 'WUPHF Premium Plan', stage: 'Pending Payment', trackingCode: 'BUNG-WUPH-77', email: 'rhoward@wuphf.com', phone: '(555) 888-9999', referredBy: 'Kelly Kapoor', amount: '$199.99' },
-                      { id: 'p5', name: 'Toby Flenderson', item: 'Legal Document Templates', stage: 'Sale Confirmed', trackingCode: 'BUNG-LEGL-33', email: 'tflenderson@email.com', phone: '(555) 333-4444', referredBy: 'Holly Flax', amount: '$149.00' }
-                    ].find(s => s.id === saleId)
+                    const saleData = productSalesData.find(s => s.id === saleId)
                     if (!saleData) return null
                     return (
                       <div className="space-y-3 sm:space-y-4">
@@ -2016,9 +2290,9 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Customer Phone</p>
                             <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{saleData.phone}</p>
                           </div>
-                          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Referred By</p>
-                            <p className="text-[10px] sm:text-sm font-semibold text-gray-800 dark:text-white">{saleData.referredBy}</p>
+                          <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 col-span-2">
+                            <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1.5">Referred By Bungee</p>
+                            <ReferrerBadge referrer={getReferrerFromName(saleData.referredBy)} />
                           </div>
                           <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                             <p className="text-[8px] sm:text-[10px] text-gray-400 mb-1">Status</p>
@@ -2034,7 +2308,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                             <Clock className="h-3 w-3" /> Order Activity
                           </h4>
                           <div className="space-y-2">
-                            {saleData.stage === 'Sale Confirmed' ? [
+                            {(saleData.stage === 'Sale Confirmed' ? [
                               { action: 'Product added to cart', time: '5 days ago', icon: ShoppingBag },
                               { action: 'Checkout initiated', time: '5 days ago', icon: CreditCard },
                               { action: 'Payment confirmed', time: '5 days ago', icon: Check },
@@ -2043,7 +2317,7 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                               { action: 'Product added to cart', time: '2 days ago', icon: ShoppingBag },
                               { action: 'Cart abandoned', time: '2 days ago', icon: AlertCircle },
                               { action: 'Reminder email sent', time: '1 day ago', icon: Mail },
-                            ].map((activity, idx) => (
+                            ]).map((activity, idx) => (
                               <div key={idx} className="flex items-center gap-2 text-[9px] sm:text-[11px]">
                                 <activity.icon className="h-3 w-3 text-gray-400" />
                                 <span className="flex-1 text-gray-600 dark:text-gray-400">{activity.action}</span>
@@ -2088,73 +2362,73 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               )}
             </div>
 
-            {/* Tagline */}
-            <div className="text-center mt-2 sm:mt-6 mb-2 sm:mb-5">
-              <p className="text-xs sm:text-lg text-gray-700 dark:text-gray-300 font-medium">Select a category below to accelerate your growth.</p>
+            {/* Friendly Welcome Header */}
+            <div className="mt-3 sm:mt-6 mb-3 sm:mb-5">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white text-balance">
+                What would you like to do today?
+              </h2>
+              <p className="text-xs sm:text-base text-gray-500 dark:text-gray-400 mt-0.5">
+                Pick a category below to start growing with referrals.
+              </p>
             </div>
 
-            {/* Main Action Cards - Clean Minimalist Design */}
-            <div className="flex flex-col w-full gap-3 sm:gap-4 mb-3 sm:mb-6">
-              {/* Services Card - Clean White Card */}
-              <button 
-                onClick={() => setActiveTab("services")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "services" ? "ring-2 ring-emerald-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-emerald-400"} bg-white dark:bg-gray-800`}
+            {/* Main Action Cards - Friendly, inviting card grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 w-full gap-3 sm:gap-4 mb-3 sm:mb-6">
+              {/* Products & Services Card - Unified entry that opens a chooser */}
+              <button
+                onClick={() => setActiveTab("productsServices")}
+                className="group relative flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:border-[#FF8C00] hover:shadow-xl active:scale-[0.99] text-left"
               >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&h=150&fit=crop" 
-                      alt="Home services"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="relative h-28 sm:h-32 w-full overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=300&fit=crop"
+                    alt="Products and services"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute top-3 left-3 size-10 sm:size-11 rounded-xl bg-white/95 dark:bg-gray-900/90 flex items-center justify-center shadow-md">
+                    <ShoppingBag className="size-5 text-[#FF8C00]" />
                   </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Promote Your Services</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Offer referral bounties and attract new local clients</p>
+                </div>
+                <div className="flex items-start gap-3 p-4 sm:p-5">
+                  <div className="flex-1">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Products &amp; Services</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      Add what you sell or provide and set word-of-mouth referral bounties.
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#FF8C00]">
+                      Get started
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
                 </div>
               </button>
 
-              {/* Products Card - Clean White Card */}
-              <button 
-                onClick={() => setActiveTab("products")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "products" ? "ring-2 ring-blue-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-blue-400"} bg-white dark:bg-gray-800`}
-              >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=150&h=150&fit=crop" 
-                      alt="Products store"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Sell Your Products</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Showcase your catalog and incentivize peer-to-peer sales</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
-                </div>
-              </button>
-
-              {/* Hiring Card - Clean White Card */}
-              <button 
+              {/* Hiring Card */}
+              <button
                 onClick={() => setActiveTab("hire")}
-                className={`group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-300 transform active:scale-[0.99] shadow-sm hover:shadow-lg ${activeTab === "hire" ? "ring-2 ring-fuchsia-600 shadow-lg" : "border border-gray-200 dark:border-gray-700 hover:border-fuchsia-400"} bg-white dark:bg-gray-800`}
+                className="group relative flex flex-col overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300 hover:border-[#FF8C00] hover:shadow-xl active:scale-[0.99] text-left"
               >
-                <div className="flex items-center p-4 sm:p-5 gap-4">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <img 
-                      src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=150&h=150&fit=crop&crop=faces" 
-                      alt="Job interview handshake"
-                      className="w-full h-full object-cover"
-                    />
+                <div className="relative h-28 sm:h-32 w-full overflow-hidden">
+                  <img
+                    src="https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600&h=300&fit=crop&crop=faces"
+                    alt="Job interview handshake"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute top-3 left-3 size-10 sm:size-11 rounded-xl bg-white/95 dark:bg-gray-900/90 flex items-center justify-center shadow-md">
+                    <Users className="size-5 text-[#FF8C00]" />
                   </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post Jobs & Hire</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Find qualified local candidates through trusted referrals</p>
+                </div>
+                <div className="flex items-start gap-3 p-4 sm:p-5">
+                  <div className="flex-1">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">Post Jobs &amp; Hire</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      Find qualified local candidates through trusted referrals.
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#FF8C00]">
+                      Get started
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 transition-colors" />
                 </div>
               </button>
             </div>
@@ -3507,111 +3781,147 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
 
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
-          <div className="relative w-full max-w-lg bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col font-sans" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
-            <div className="p-4 sm:p-6 bg-gradient-to-r from-gray-700/50 to-gray-50/50 border-b border-gray-200 dark:border-gray-700">
-              <button onClick={() => setShowSettings(false)} className="absolute top-3 right-3 p-2 rounded-full bg-gray-100 dark:bg-gray-700/90 hover:bg-red-500 transition-colors z-10 border border-gray-200 dark:border-gray-700">
-                <X className="size-5 text-gray-900 dark:text-white" />
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-gray-100 dark:border-gray-800">
+              <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors z-10">
+                <X className="size-5 text-gray-700 dark:text-gray-300" />
               </button>
-              <div className="flex items-center gap-3">
-                <div className="size-12 rounded-xl bg-[#FF8C00]/20 flex items-center justify-center">
-                  <Settings className="size-6 text-[#FF8C00]" />
+              <div className="flex items-center gap-3.5">
+                <div className="size-12 rounded-2xl bg-[#FF8C00] flex items-center justify-center shadow-lg shadow-orange-500/30">
+                  <Settings className="size-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">Business Settings</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage your business profile</p>
+                  <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">Business Settings</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Manage your business profile</p>
                 </div>
               </div>
             </div>
             
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <div className="flex gap-2 px-6 sm:px-8 pt-4 pb-1">
               <button 
                 onClick={() => setSettingsTab("business")}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${settingsTab === "business" ? "text-[#FF8C00] border-b-2 border-[#FF8C00]" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white"}`}
+                className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all ${settingsTab === "business" ? "bg-[#FF8C00] text-white shadow-md shadow-orange-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
               >
                 Business Info
               </button>
               <button 
                 onClick={() => setSettingsTab("legal")}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${settingsTab === "legal" ? "text-[#FF8C00] border-b-2 border-[#FF8C00]" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white"}`}
+                className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all ${settingsTab === "legal" ? "bg-[#FF8C00] text-white shadow-md shadow-orange-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"}`}
               >
                 Legal & Contracts
               </button>
             </div>
             
             {/* Content */}
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+            <div className="px-6 py-5 sm:px-8 sm:py-6 overflow-y-auto flex-1">
               {settingsTab === "business" && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* Business Logo */}
                   <div className="flex items-center gap-4">
-                    <div className="size-16 rounded-xl bg-[#FF8C00]/20 flex items-center justify-center border-2 border-dashed border-[#FF8C00]/50">
+                    <div className="size-16 rounded-2xl bg-[#FF8C00]/10 flex items-center justify-center border-2 border-dashed border-[#FF8C00]/40">
                       <Building2 className="size-8 text-[#FF8C00]" />
                     </div>
                     <div>
-                      <Button size="sm" className="bg-[#FF8C00] hover:bg-[#E67E00] text-gray-900 dark:text-white">
+                      <Button size="sm" className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold">
+                        <Upload className="size-4 mr-2" />
                         Upload Logo
                       </Button>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">PNG or JPG, max 2MB</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">PNG or JPG, max 2MB</p>
                     </div>
                   </div>
-                  
+
+                  {/* Website + AI Auto-fill */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Website</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        value={businessInfo.website} 
+                        onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})} 
+                        className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white flex-1" 
+                        placeholder="https://yourwebsite.com" 
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleAutoFill}
+                        disabled={!businessInfo.website.trim() || isAutoFilling}
+                        className="shrink-0 bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold disabled:opacity-50"
+                      >
+                        {isAutoFilling ? (
+                          <>
+                            <Loader2 className="size-4 mr-1.5 animate-spin" />
+                            Filling...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-4 mr-1.5" />
+                            Auto-fill
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                      Enter your URL and let AI fill in your business details.
+                    </p>
+                  </div>
+
                   {/* Business Name */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Business Name</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Name</label>
                     <Input 
                       value={businessInfo.name} 
                       onChange={(e) => setBusinessInfo({...businessInfo, name: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="Enter business name" 
                     />
                   </div>
                   
                   {/* Address */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Business Address</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Address</label>
                     <Input 
                       value={businessInfo.address} 
                       onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="123 Main St, City, State" 
                     />
                   </div>
                   
                   {/* Phone */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Phone Number</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Phone Number</label>
                     <Input 
                       value={businessInfo.phone} 
                       onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="(555) 123-4567" 
                     />
                   </div>
-                  
-                  {/* Website */}
+
+                  {/* Business Bio */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Website</label>
-                    <Input 
-                      value={businessInfo.website} 
-                      onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})} 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
-                      placeholder="https://yourwebsite.com" 
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Business Bio</label>
+                    <textarea
+                      value={businessInfo.bio}
+                      onChange={(e) => setBusinessInfo({...businessInfo, bio: e.target.value})}
+                      rows={3}
+                      className="w-full rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#FF8C00]/40 focus:border-[#FF8C00]"
+                      placeholder="Describe your business so Bungees can talk about it accurately to customers."
                     />
                   </div>
                   
                   {/* Industry */}
                   <div>
-                    <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Industry</label>
+                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Industry</label>
                     <Input 
-                      className="bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
+                      className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" 
                       placeholder="e.g., Technology, Healthcare, Retail" 
                     />
                   </div>
                   
                   {/* Save Button */}
-                  <Button className="w-full bg-emerald-700 hover:bg-green-600 text-gray-900 dark:text-white mt-4">
+                  <Button className="w-full bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold mt-2">
                     <Save className="size-4 mr-2" />
                     Save Changes
                   </Button>
@@ -3621,69 +3931,63 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               {settingsTab === "legal" && (
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Complete the required contracts to activate your business on Bungee.
+                    Review and sign the required agreements to activate your business on Bungee. Completed documents are
+                    stored in your settings and a copy is sent to the Bungee compliance team.
                   </p>
-                  
-                  {/* Contract List */}
+
+                  {/* Contract List — data-driven from the shared legal document library */}
                   <div className="space-y-3">
-                    {/* Service Agreement */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
+                    {BUSINESS_DOCUMENTS.map((doc) => {
+                      const isSigned = signedKeys.has(doc.key)
+                      const signedRecord = signedDocs.find((d) => d.doc_key === doc.key)
+                      return (
+                        <div
+                          key={doc.key}
+                          className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={`size-10 rounded-lg flex items-center justify-center ${
+                                  isSigned ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-400"
+                                }`}
+                              >
+                                {isSigned ? <CheckCircle2 className="size-5" /> : <FileText className="size-5" />}
+                              </div>
+                              <div className="min-w-0">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                  {doc.title}
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{doc.summary}</p>
+                              </div>
+                            </div>
+                            {isSigned ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shrink-0">
+                                Completed
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 shrink-0">Not Signed</Badge>
+                            )}
                           </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Service Agreement</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Required to use Bungee services</p>
-                          </div>
+                          {isSigned && signedRecord ? (
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                              Signed by {signedRecord.signer_name} on{" "}
+                              {new Date(signedRecord.signed_at).toLocaleDateString()} · {doc.version}
+                            </p>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() => setActiveLegalDoc(doc)}
+                              className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00] text-white"
+                            >
+                              Review &amp; Sign
+                            </Button>
+                          )}
                         </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* Referral Terms */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Referral Terms</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Bounty payment agreement</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* Privacy Policy */}
-                    <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-                            <FileText className="size-5 text-red-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Privacy Policy</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Data handling agreement</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Not Signed</Badge>
-                      </div>
-                      <Button size="sm" className="w-full mt-3 bg-[#FF8C00] hover:bg-[#E67E00]">
-                        Review & Sign
-                      </Button>
-                    </div>
-                    
-                    {/* W-9 Form */}
+                      )
+                    })}
+
+                    {/* W-9 Form — handled via upload, not e-signature */}
                     <div className="p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -3702,15 +4006,45 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* Status Summary */}
-                  <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-                    <div className="flex items-center gap-2 text-red-400">
-                      <AlertCircle className="size-5" />
-                      <span className="text-sm font-semibold">3 contracts require attention</span>
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Complete all contracts to fully activate your account.</p>
-                  </div>
+                  {(() => {
+                    const signedCount = BUSINESS_DOCUMENTS.filter((d) => signedKeys.has(d.key)).length
+                    const remaining = BUSINESS_DOCUMENTS.length - signedCount
+                    if (signedDocsLoading) {
+                      return (
+                        <div className="mt-6 p-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Loading your documents…</p>
+                        </div>
+                      )
+                    }
+                    if (remaining === 0) {
+                      return (
+                        <div className="mt-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="size-5" />
+                            <span className="text-sm font-semibold">All agreements signed</span>
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            Your agreements are complete and on file with Bungee compliance.
+                          </p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <div className="mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+                        <div className="flex items-center gap-2 text-red-400">
+                          <AlertCircle className="size-5" />
+                          <span className="text-sm font-semibold">
+                            {remaining} agreement{remaining === 1 ? "" : "s"} require attention
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          Complete all agreements to fully activate your account.
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
             </div>
@@ -3718,8 +4052,19 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         </div>
       )}
 
-      {/* Veteran Pool Modal */}
-      {showVeteranPool && (
+      {/* Legal document review & sign modal */}
+      <DocumentSignModal
+        document={activeLegalDoc}
+        open={activeLegalDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setActiveLegalDoc(null)
+        }}
+        onSigned={handleDocSigned}
+        isDemo={isDemo}
+      />
+
+      {/* Veteran Pool Modal — portaled to body so it escapes the hidden tab container */}
+      {showVeteranPool && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowVeteranPool(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3772,11 +4117,12 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* General Talent Pool Modal */}
-      {showBungeePool && (
+      {/* General Talent Pool Modal — portaled to body so it escapes the hidden tab container */}
+      {showBungeePool && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowBungeePool(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3792,8 +4138,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">General Talent Pool</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Silver & Bronze medalists from past hiring blasts</p>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Bungee Pool</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Silver &amp; Gold medalists from passed searches</p>
                 </div>
               </div>
             </div>
@@ -3805,25 +4151,25 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               <div className="flex gap-2 mb-4">
                 <Badge className="bg-gray-900 text-white border-gray-900 cursor-pointer">All</Badge>
                 <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Silver Medalists</Badge>
-                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Bronze Medalists</Badge>
+                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 cursor-pointer hover:bg-gray-200">Gold Medalists</Badge>
               </div>
               <div className="space-y-3">
                 {[
-                  { name: "Sarah M.", role: "Full Stack Developer", company: "TechCorp", match: 94, medal: "silver", skills: "React, Node.js, AWS" },
+                  { name: "Sarah M.", role: "Full Stack Developer", company: "TechCorp", match: 94, medal: "gold", skills: "React, Node.js, AWS" },
                   { name: "James K.", role: "Sales Manager", company: "SalesForce Inc", match: 91, medal: "silver", skills: "B2B Sales, CRM, Team Leadership" },
-                  { name: "Maria L.", role: "Marketing Director", company: "AdVenture Co", match: 87, medal: "bronze", skills: "Digital Marketing, SEO, Analytics" },
+                  { name: "Maria L.", role: "Marketing Director", company: "AdVenture Co", match: 87, medal: "gold", skills: "Digital Marketing, SEO, Analytics" },
                   { name: "Tom W.", role: "Project Manager", company: "BuildIt LLC", match: 89, medal: "silver", skills: "Agile, Scrum, JIRA" },
-                  { name: "Lisa R.", role: "UX Designer", company: "DesignHub", match: 85, medal: "bronze", skills: "Figma, User Research, Prototyping" },
+                  { name: "Lisa R.", role: "UX Designer", company: "DesignHub", match: 85, medal: "gold", skills: "Figma, User Research, Prototyping" },
                 ].map((candidate, idx) => (
                   <div key={idx} className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-400 hover:shadow-md transition-all">
-                    <div className={`size-12 rounded-full flex items-center justify-center text-white font-bold ${candidate.medal === "silver" ? "bg-gray-400" : "bg-gray-600"}`}>
-                      {candidate.medal === "silver" ? "2" : "3"}
+                    <div className={`size-12 rounded-full flex items-center justify-center text-white font-bold ${candidate.medal === "gold" ? "bg-[#FF8C00]" : "bg-gray-400"}`}>
+                      {candidate.medal === "gold" ? "1" : "2"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-900 dark:text-white">{candidate.name}</p>
-                        <Badge className={`text-xs font-medium ${candidate.medal === "silver" ? "bg-gray-200 text-gray-700 dark:text-gray-300 border-gray-300" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-300"}`}>
-                          {candidate.medal === "silver" ? "Silver" : "Bronze"}
+                        <Badge className={`text-xs font-medium ${candidate.medal === "gold" ? "bg-amber-50 text-gray-800 border-[#FF8C00]" : "bg-gray-200 text-gray-700 dark:text-gray-300 border-gray-300"}`}>
+                          {candidate.medal === "gold" ? "Gold" : "Silver"}
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">{candidate.role}</p>
@@ -3839,11 +4185,12 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Pro Recruit Modal */}
-      {showProRecruit && (
+      {/* Pro Recruit Modal — portaled to body so it escapes the hidden tab container */}
+      {showProRecruit && isMounted && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowProRecruit(false)}>
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -3865,6 +4212,62 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Fill out a job order with the same AI wizard structure */}
+              <div className="p-4 rounded-lg bg-gray-900 dark:bg-gray-900 border border-gray-700">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-white flex items-center gap-2">
+                      <Sparkles className="size-4 text-[#FF8C00]" /> Create a Job Order
+                    </h3>
+                    <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                      Use the same guided wizard to scope the role. We&apos;ll hand it to a Pro-Bungee recruiter to
+                      source candidates.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setShowProRecruit(false)
+                      setShowJobOrderWizard(true)
+                    }}
+                    className="bg-[#FF8C00] hover:bg-[#E67E00] text-white font-semibold shrink-0"
+                  >
+                    <Plus className="size-4 mr-1.5" /> Fill Out Job Order
+                  </Button>
+                </div>
+              </div>
+
+              {/* Job orders routed here from the AI Job Wizard */}
+              {proRecruiterOrders.length > 0 && (
+                <div className="p-4 rounded-lg bg-orange-50 dark:bg-[#FF8C00]/10 border border-[#FF8C00]/40">
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Send className="size-4 text-[#FF8C00]" /> Your Job Orders Sent to Pro Recruiters
+                  </h3>
+                  <div className="space-y-2">
+                    {proRecruiterOrders.map((order, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{order.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+                            {order.compensation && <span>{order.compensation}</span>}
+                            {order.workModel && <span>{order.workModel}</span>}
+                            {order.bounty && <span>${order.bounty} bounty</span>}
+                          </div>
+                        </div>
+                        <Badge className="bg-amber-50 text-gray-800 border-2 border-[#FF8C00] text-xs font-semibold shadow-sm shrink-0">
+                          Recruiters Notified
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-3 leading-relaxed">
+                    A Pro-Bungee recruiter will pick up these roles and present a shortlist within 5-10 business days.
+                  </p>
+                </div>
+              )}
+
               {/* Fee Breakdown */}
               <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><DollarSign className="size-4 text-gray-900 dark:text-white" /> Fee Structure &amp; Agreement</h3>
@@ -3933,7 +4336,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Candidate Management Wizard Modal */}
@@ -3967,7 +4371,14 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
             >
               <X className="size-5 text-gray-900 dark:text-white" />
             </button>
-            <JobOrderWizard onClose={() => setShowJobOrderWizard(false)} />
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl p-5 sm:p-6">
+              <AiJobWizard
+                onClose={() => setShowJobOrderWizard(false)}
+                business={{ businessName: userProfile?.business_name || businessName }}
+                isDemo={isDemo}
+                onJobOrderCreated={handleJobOrderCreated}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -4126,8 +4537,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         </div>
       )}
 
-      {/* Wallet/Escrow Modal */}
-      {showWalletModal && (
+      {/* Wallet/Escrow Modal — portaled to body so it escapes the hidden tab container */}
+      {showWalletModal && isMounted && createPortal(
         <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
           <div className="bg-white dark:bg-gray-900 w-full sm:w-[420px] sm:max-w-[90vw] max-h-[85vh] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl">
             {/* Header */}
@@ -4177,6 +4588,39 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
                 </button>
               </div>
               
+              {/* Payout Methods */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Payout Methods</p>
+                <div className="space-y-2">
+                  {/* Cash / Bank */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="size-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
+                      <Banknote className="size-[18px] text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Cash / Bank Transfer</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {cashPayoutEnabled ? "Direct deposit to •••• 4291" : "Disabled"}
+                      </p>
+                    </div>
+                    <Switch checked={cashPayoutEnabled} onCheckedChange={setCashPayoutEnabled} />
+                  </div>
+                  {/* Crypto */}
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="size-9 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
+                      <Bitcoin className="size-[18px] text-[#FF8C00]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">Crypto (Bitcoin)</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {cryptoPayoutEnabled ? "Payouts in BTC at market rate" : "Disabled"}
+                      </p>
+                    </div>
+                    <Switch checked={cryptoPayoutEnabled} onCheckedChange={setCryptoPayoutEnabled} />
+                  </div>
+                </div>
+              </div>
+
               {/* Recent Transactions */}
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Recent Transactions</p>
@@ -4200,7 +4644,8 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Merchant Bottom Navigation Bar */}
@@ -4208,32 +4653,32 @@ export default function BusinessDashboard({ onViewChange, currentView = "busines
         <div className="flex items-center justify-around py-3 px-6 max-w-lg mx-auto">
           {/* Campaigns */}
           <button 
-            onClick={() => setActiveTab(null)}
+            onClick={() => setActiveTab("campaigns")}
             className="flex flex-col items-center gap-1 group"
           >
             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${
-              !activeTab 
+              activeTab === "campaigns"
                 ? 'bg-[#FF8C00]/10 border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20' 
                 : 'bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700'
             }`}>
-              <Megaphone className={`w-5 h-5 ${!activeTab ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
+              <Megaphone className={`w-5 h-5 ${activeTab === "campaigns" ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
             </div>
-            <span className={`text-xs font-semibold ${!activeTab ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Campaigns</span>
+            <span className={`text-xs font-semibold ${activeTab === "campaigns" ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Campaigns</span>
           </button>
 
           {/* Analytics */}
           <button 
-            onClick={() => setActiveTab('marketplace')}
+            onClick={() => setActiveTab('analytics')}
             className="flex flex-col items-center gap-1 group"
           >
             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all group-active:scale-95 ${
-              activeTab === 'marketplace'
+              activeTab === 'analytics'
                 ? 'bg-[#FF8C00]/10 border-2 border-[#FF8C00] shadow-md shadow-[#FF8C00]/20' 
                 : 'bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700'
             }`}>
-              <BarChart3 className={`w-5 h-5 ${activeTab === 'marketplace' ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
+              <BarChart3 className={`w-5 h-5 ${activeTab === 'analytics' ? 'text-[#FF8C00]' : 'text-gray-500'}`} />
             </div>
-            <span className={`text-xs font-semibold ${activeTab === 'marketplace' ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Analytics</span>
+            <span className={`text-xs font-semibold ${activeTab === 'analytics' ? 'text-[#FF8C00]' : 'text-gray-500'}`}>Analytics</span>
           </button>
 
           {/* Wallet/Escrow */}
